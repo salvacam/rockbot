@@ -32,9 +32,9 @@ GameTextCreditsTab::~GameTextCreditsTab()
 void GameTextCreditsTab::load_data()
 {
     CURRENT_FILE_FORMAT::fio_strings fio_str;
-    game_credits_data = fio_str.get_string_list_from_file(FILEPATH + "/game_credits.txt");
+    game_credits_data = fio_str.get_string_list_from_file(FILEPATH + "/game_credits.txt", LANGUAGE_ENGLISH);
     // read file and fill void spaces in boss credits with empty strings
-    boss_credits_data = fio_str.get_string_list_from_file(FILEPATH + "/boss_credits.txt");
+    boss_credits_data = fio_str.get_string_list_from_file(FILEPATH + "/boss_credits.txt", LANGUAGE_ENGLISH);
     int max_lines = STAGE_COUNT * 3;
     if (boss_credits_data.size() < max_lines) {
         for (int i=boss_credits_data.size(); i<max_lines; i++) {
@@ -69,8 +69,8 @@ void GameTextCreditsTab::save_data()
       game_credits_data.push_back(str.toStdString());
     }
 
-    fio_str.save_game_strings(game_credits_data, FILEPATH + "/game_credits.txt");
-    fio_str.save_game_strings(boss_credits_data, FILEPATH + "/boss_credits.txt");
+    fio_str.write_string_list_to_file(game_credits_data, FILEPATH + "/game_credits.txt", LANGUAGE_ENGLISH);
+    fio_str.write_string_list_to_file(boss_credits_data, FILEPATH + "/boss_credits.txt", LANGUAGE_ENGLISH);
 }
 
 void GameTextCreditsTab::on_bossCredits_lineEdit1_textChanged(const QString &arg1)

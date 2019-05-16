@@ -46,7 +46,6 @@ public:
 private:
     void generate_pages();
     void draw_page(int page_n);
-    void draw_bottom();
 
 private:
     std::vector<st_manual_page> page_list;

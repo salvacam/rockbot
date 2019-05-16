@@ -46,7 +46,7 @@ u32 psp_ram::ramAvailable (void) {
 
 
     // Init variables
-    ram = NULL;
+    //ram = NULL;
     size = 0;
     count = 0;
 

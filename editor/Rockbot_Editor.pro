@@ -8,8 +8,8 @@
 
 QT += widgets
 
-QMAKE_CCFLAGS += -fpermissive
-QMAKE_CXXFLAGS += -fpermissive
+    QMAKE_CCFLAGS += -fpermissive
+    QMAKE_CXXFLAGS += -fpermissive
 
 
 macosx {
@@ -37,7 +37,6 @@ macosx {
 linux {
     QMAKE_CCFLAGS += -std=c++0x -g
     QMAKE_CXXFLAGS += -std=c++0x -g
-    CONFIG += console
 }
 
 win32 {
@@ -49,7 +48,6 @@ win32 {
     QMAKE_CCFLAGS += -DWIN32
     QMAKE_CXXFLAGS += -DWIN32
     CXXFLAGS += -DWIN32
-    CONFIG -= console
 }
 
 
@@ -114,11 +112,11 @@ SOURCES += main.cpp \
     framespreviewarea.cpp \
     widgets/animtilepalette.cpp \
     mainwindow_tab/anim/animpackimport.cpp \
+    mainwindow_tab/castlepointspreviewarea.cpp \
     dialog_pick_color.cpp \
-    files_editor/gametextcreditstab.cpp \
-    ../aux_tools/exception_manager.cpp \
-    mainwindow_tab/castlepointsdialog.cpp \
-    mainwindow_tab/castle_points_editorarea.cpp
+    mainwindow_tab/stageselectmapdialog.cpp \
+    mainwindow_tab/stageselectmapeditarea.cpp \
+    files_editor/gametextcreditstab.cpp
 
 HEADERS += mainwindow.h \
     editorarea.h \
@@ -195,11 +193,11 @@ HEADERS += mainwindow.h \
     framespreviewarea.h \
     widgets/animtilepalette.h \
     mainwindow_tab/anim/animpackimport.h \
+    mainwindow_tab/castlepointspreviewarea.h \
     dialog_pick_color.h \
-    files_editor/gametextcreditstab.h \
-    ../aux_tools/exception_manager.h \
-    mainwindow_tab/castlepointsdialog.h \
-    mainwindow_tab/castle_points_editorarea.h
+    mainwindow_tab/stageselectmapdialog.h \
+    mainwindow_tab/stageselectmapeditarea.h \
+    files_editor/gametextcreditstab.h
 
 FORMS += mainwindow.ui \
     addwizard.ui \
@@ -234,10 +232,11 @@ FORMS += mainwindow.ui \
     mainwindow_tab/anim_tiles_edit.ui \
     mainwindow_tab/anim/animpackimport.ui \
     dialog_pick_color.ui \
-    files_editor/gametextcreditstab.ui \
-    mainwindow_tab/castlepointsdialog.ui
+    mainwindow_tab/stageselectmapdialog.ui \
+    files_editor/gametextcreditstab.ui
 
 RESOURCES += resources/icons/icons.qrc
+CONFIG += console
 INCLUDEPATH += ../common
 INCLUDEPATH += ..
 INCLUDEPATH += ./mainwindow_tab

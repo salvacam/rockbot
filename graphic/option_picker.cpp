@@ -39,8 +39,7 @@ option_picker::option_picker(bool draw_border, st_position pos, std::vector<st_m
     _items = options;
     _show_return = show_return;
     if (_show_return == true) {
-
-        _items.insert(_items.begin(), st_menu_option(strings_map::get_instance()->get_ingame_string(strings_config_return, game_config.selected_language)));
+        _items.insert(_items.begin(), st_menu_option("RETURN"));
     }
 
     _pick_pos = 0;
@@ -48,7 +47,6 @@ option_picker::option_picker(bool draw_border, st_position pos, std::vector<st_m
     //std::cout << "#3 option_picker -  pos.x: " << _position.x << ", pos.y: " << _position.y << std::endl;
 
     check_input_reset_command = false;
-    check_input_cheat_command = false;
 
     draw();
 }
@@ -71,11 +69,10 @@ option_picker::option_picker(bool draw_border, st_position pos, std::vector<stri
     _items = option_list;
     _show_return = show_return;
     if (_show_return == true) {
-        _items.insert(_items.begin(), st_menu_option(strings_map::get_instance()->get_ingame_string(strings_config_return, game_config.selected_language)));
+        _items.insert(_items.begin(), st_menu_option("RETURN"));
     }
 
     check_input_reset_command = false;
-    check_input_cheat_command = false;
 
 
     draw();
@@ -92,20 +89,17 @@ void option_picker::change_option_label(int n, string label)
 Sint8 option_picker::pick(int initial_pick_pos)
 {
     bool finished = false;
-    input.clean_all();
+    input.clean();
     timer.delay(100);
     _pick_pos = initial_pick_pos;
 
 	graphLib.drawCursor(st_position(_position.x-CURSOR_SPACING, _position.y+(_pick_pos*CURSOR_SPACING)));
 
     while (finished == false) {
-        input.read_input(check_input_reset_command, check_input_cheat_command);
+        input.read_input(check_input_reset_command);
         if (check_input_reset_command == true && input.is_check_input_reset_command_activated()) {
             std::cout << "RESET ACTIVE!!" << std::endl;
             show_reset_config_dialog();
-        } else if (check_input_cheat_command == true && input.is_check_input_cheat_command_activated()) {
-            input.reset_cheat_input();
-            return MAIN_MENU_CHEAT_RETURN;
         }
 
         if (input.p1_input[BTN_START] || input.p1_input[BTN_JUMP]) {
@@ -167,11 +161,6 @@ void option_picker::enable_check_input_reset_command()
     check_input_reset_command = true;
 }
 
-void option_picker::enable_check_input_cheat_command()
-{
-    check_input_cheat_command = true;
-}
-
 void option_picker::show_reset_config_dialog()
 {
     graphicsLib_gSurface screen_copy;
@@ -187,7 +176,7 @@ void option_picker::show_reset_config_dialog()
     graphLib.updateScreen();
     long init_timer = timer.getTimer();
     while (input.is_check_input_reset_command_activated() == false) {
-        input.read_input(true, false);
+        input.read_input(true);
         timer.delay(1);
         if (init_timer+10000 < timer.getTimer()) {
             break;
@@ -211,14 +200,9 @@ void option_picker::wait_release_reset_config()
     graphLib.draw_text(20, 20, "PLEASE RELEASE BUTTONS");
     graphLib.updateScreen();
     while (input.is_check_input_reset_command_activated() == true) {
-        input.read_input(true, false);
+        input.read_input(true);
         timer.delay(1);
     }
-}
-
-void option_picker::add_option_item(st_menu_option item)
-{
-    _items.push_back(item);
 }
 
 
@@ -238,7 +222,7 @@ void option_picker::draw()
 
     //std::cout << "OPTION_PICKER::text_max_len: " << text_max_len << std::endl;
 
-    graphLib.clear_area(_position.x, _position.y, text_max_len*8, _items.size()*12, CONFIG_BGCOLOR_R, CONFIG_BGCOLOR_G, CONFIG_BGCOLOR_B);
+    graphLib.clear_area(_position.x, _position.y, text_max_len*8, _items.size()*12, 0, 0, 0);
 	for (unsigned int i=0; i<_items.size(); i++) {
         st_menu_option menu_item = _items.at(i);
 

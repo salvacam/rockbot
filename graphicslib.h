@@ -1,16 +1,17 @@
+#pragma GCC diagnostic ignored "-Wreorder"
+
 #ifndef GRAPHICSLIB_H
 #define GRAPHICSLIB_H
 
 #include <string>
 #include <vector>
 #include <map>
-#include <climits>
+
 
 #include <SDL/SDL.h>				//Include da SDL
 #include <SDL/SDL_image.h>		//Include da biblioteca SDL_Image
 #include <SDL/SDL_ttf.h>		// Include da biblioteca SDL_ttf
 #include <SDL/SDL_endian.h>
-#include <SDL/SDL_rotozoom.h>
 
 #include "defines.h"
 #include "file/format/st_common.h"
@@ -31,10 +32,6 @@
 // SDL, you can clone this class and use other platform-specific methods          //
 // ****************************************************************************** //
 
-enum e_PRELOADED_IMAGES {
-    PRELOADED_IMAGES_EXPLOSION_BUBBLE,
-    PRELOADED_IMAGES_COUNT
-};
 
 enum e_flip_type {
     flip_type_horizontal,
@@ -148,7 +145,6 @@ public:
     graphicsLib();
     ~graphicsLib();
     bool initGraphics();
-    void load_shared_graphics();
     void preload();
     void updateScreen();
     void loadTileset(std::string file);
@@ -175,26 +171,16 @@ public:
 
     void set_surface_alpha(int alpha, graphicsLib_gSurface &surface);
     void set_surface_alpha(int alpha, graphicsLib_gSurface *surface);
-
-    void set_surface_alpha_nocolorkey(int alpha, graphicsLib_gSurface &surface);
-
     struct graphicsLib_gSurface surfaceFromRegion(struct st_rectangle, struct graphicsLib_gSurface&);
     void blank_screen();
-    void blank_screen(int r, int g, int b);
     void blank_surface(struct graphicsLib_gSurface& surface);
-
-    std::string utf8_substr2(const std::string &str,int start, int length=INT_MAX);
-
     int draw_progressive_text(short int x, short int y, std::string text, bool interrupt);
     int draw_progressive_text(short int x, short int y, std::string text, bool interrupt, int delay);
     void draw_text(short int x, short int y, std::string text);
     void draw_text(short int x, short int y, std::string text, st_color color);
     void draw_text(short int x, short int y, std::string text, struct graphicsLib_gSurface& surface);
     void draw_centered_text(short int y, std::string text, st_color font_color);
-    void draw_centered_text(short int y, std::string text);
     void draw_centered_text(short int y, std::string text, struct graphicsLib_gSurface& surface, st_color temp_font_color);
-
-
     Uint8 getColorNumber(Uint8 r, Uint8 g, Uint8 b);
     void drawCursor(st_position);
     void eraseCursor(st_position);
@@ -202,11 +188,12 @@ public:
     void blink_surface_into_screen(struct graphicsLib_gSurface &surface);
     void load_icons();
     void draw_weapon_icon(short, st_position menu_pos, bool active);
-    void draw_weapon_tooltip_icon(short weapon_n, st_position position, bool disabled);
+    void draw_weapon_tooltip_icon(short weapon_n, st_position position);
     void draw_menu_item(int x_pos);
     void erase_menu_item(int x_pos);
     void draw_item_icon(enum ITEM_ICONS_ENUM, st_position pos);
     void draw_weapon_menu_bg(Uint8 current_hp, graphicsLib_gSurface *player_frame, short max_hp);
+    void draw_hp_bar(short int hp, short player_n, short weapon_n, short int max_hp);
     void clear_area(short int x, short int y, short int w, short int h, short int r, short int g, short int b);
 
     void clear_area_alpha(short int x, short int y, short int w, short int h, short int r, short int g, short int b, int alpha);
@@ -217,8 +204,7 @@ public:
     void draw_rectangle(st_rectangle area, int r, int g, int b, int alpha);
     void clear_surface_area(short int x, short int y, short int w, short int h, short int r, short int g, short int b, struct graphicsLib_gSurface& surface) const;
     void clear_surface_area_no_adjust(short int x, short int y, short int w, short int h, short int r, short int g, short int b, struct graphicsLib_gSurface& surface) const;
-    void show_config_bg();
-    void show_config_bg_animation();
+    void show_config_bg(Uint8 position);
     void draw_weapon_cursor(st_position old_pos, short hp, short player_n, short max_hp);
     void show_dialog(Uint8 position);
     void show_dialog_button(Uint8 position);
@@ -236,17 +222,12 @@ public:
     void draw_explosion(st_position pos);
     void show_debug_msg(std::string msg);
     void draw_path(st_position initial_point, st_position final_point, short duration);
-    void flip_image(graphicsLib_gSurface original, graphicsLib_gSurface &res, e_flip_type flip_mode);
+    graphicsLib_gSurface flip_image(graphicsLib_gSurface original, e_flip_type flip_mode);
     void set_spriteframe_surface(st_spriteFrame *frame, graphicsLib_gSurface newSurface);
     void place_water_tile(st_position dest);
 #ifdef PSP
     void psp_show_available_ram(int n);
 #endif
-
-    void zoom_image(st_position dest, graphicsLib_gSurface picture, int smooth);
-    void rotate_image(graphicsLib_gSurface& picture, double angle);
-    void rotated_from_image(graphicsLib_gSurface *picture, graphicsLib_gSurface& dest, double angle);
-    graphicsLib_gSurface* get_preloaded_image(e_PRELOADED_IMAGES image_n);
 
 private:
     void copySDLArea(struct st_rectangle, struct st_position, SDL_Surface*, SDL_Surface*, bool fix_colors);
@@ -254,6 +235,7 @@ private:
     SDL_Surface *SDLSurfaceFromFile(std::string filename);
     void scale2x(SDL_Surface *src, SDL_Surface *dst, bool smooth_scale) const;
     void draw_horizontal_hp_bar(st_position pos, short int hp, short int player_n, short max_hp);
+    void draw_vertical_hp_bar(short int player_n, short int weapon_n);
     void draw_star(short int x, short int y, int size);
     void erase_star(short int x, short int y, int size);
     void preload_faces() const;
@@ -263,7 +245,6 @@ private:
     void set_video_mode();
     void preload_images();
     void preload_anim_tiles();
-    void render_text(short int x, short int y, std::string text, st_color color, struct graphicsLib_gSurface& surface, bool centered);
 
 
 
@@ -278,8 +259,7 @@ public:
 
 	// graphics used in several places
     graphicsLib_gSurface small_explosion;
-    std::vector<st_surface_with_direction> projectile_surface;
-    //std::vector<graphicsLib_gSurface> projectile_surface;
+    std::vector<graphicsLib_gSurface> projectile_surface;
     graphicsLib_gSurface bomb_explosion_surface;
     graphicsLib_gSurface e_tank[2];
     graphicsLib_gSurface w_tank[2];
@@ -288,8 +268,8 @@ public:
 
     graphicsLib_gSurface explosion32;
     graphicsLib_gSurface explosion16;
-    graphicsLib_gSurface explosion_player_death;
     graphicsLib_gSurface dash_dust;
+    graphicsLib_gSurface hit;
     graphicsLib_gSurface water_splash;
 
     graphicsLib_gSurface armor_icon_arms;
@@ -306,7 +286,6 @@ private:
 	// TODO: free those pointers
     TTF_Font *font;
     TTF_Font *lowercase_font;
-    TTF_Font *outline_font;
 
     SDL_Surface *game_screen;									// we do not put this into a graphicsLib_gSurface because this is meant to be used only internally
     SDL_Surface *game_screen_scaled;
@@ -346,9 +325,6 @@ private:
 
 
     struct graphicsLib_gSurface _screen_border;
-
-    graphicsLib_gSurface preloaded_images[PRELOADED_IMAGES_COUNT];
-
 
 
 #ifdef PSP

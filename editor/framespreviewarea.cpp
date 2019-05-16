@@ -1,7 +1,6 @@
 #include "framespreviewarea.h"
 #include <iostream>
 #include <algorithm>
-#include <QBitmap>
 
 framesPreviewArea::framesPreviewArea(QWidget *parent) : QWidget(parent), graphic_filename(""), img_grid_w(16), img_grid_h(16) {
     myParent = parent;
@@ -51,8 +50,6 @@ void framesPreviewArea::paintEvent(QPaintEvent *) {
     QRectF target, source;
 	int i;
 
-
-
 	if (graphic_filename.find(".png") == std::string::npos) {
 		return;
 	}
@@ -83,19 +80,10 @@ void framesPreviewArea::paintEvent(QPaintEvent *) {
 
 
     if (image.isNull() == true || image.width() <= 0) {
-        std::cout << "IMG IS NULL" << std::endl;
         return;
     }
-
-    QBitmap mask = image.createMaskFromColor(QColor(75, 125, 125), Qt::MaskInColor);
-    image.setMask(mask);
-
-
     image_w = image.width();
     image_h = image.height();
-
-    std::cout << "image_w[" << image_w << "], image_h[" << image_h << "], img_grid_w[" << img_grid_w << "], img_grid_h[" << img_grid_h << "]" << std::endl;
-
     image = image.scaled(image.width()*2, image.height()*2);
     if (_bg_graphic_filename.length() > 0) {
 		this->resize(QSize(std::max(image.width(), bg_image.width())+1, std::max(image.height(), bg_image.height())+1));
@@ -110,7 +98,7 @@ void framesPreviewArea::paintEvent(QPaintEvent *) {
 
 	myParent->adjustSize();
 
-    target = QRectF(QPoint(sprite_x*2, sprite_y*2), QSize(image.width(), image.height()));
+    target = QRectF(QPoint(sprite_x, sprite_y), QSize(image.width(), image.height()));
     source = QRectF(QPoint(0, 0), QSize(image.width(), image.height()));
     painter.drawPixmap(target, image, source);
 

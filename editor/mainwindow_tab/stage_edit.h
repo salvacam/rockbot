@@ -71,24 +71,20 @@ private slots:
 
     void on_boss_dialog_answer2_line3_textChanged(const QString &arg1);
 
-    void on_language_comboBox_currentIndexChanged(int index);
-
-    void on_checkBox_stateChanged(int arg1);
+    void on_stage_boss_weapon_combo_currentIndexChanged(int index);
 
 public slots:
     void on_string_selected(int string_id);
 
 private:
-    void fill_stage_tab_data(int language_n);
-    void update_stage_data(int language_n);
+	void fill_stage_tab_data();
+    void update_stage_data();
     void string_tooltip_click(int *property, QLineEdit* qline);
 
 private:
 	Ui::stage_edit *ui;
     bool _data_loading;
     CURRENT_FILE_FORMAT::fio_strings fio_str;
-    std::map<int, std::vector<std::string> > stage_dialog_default_language_list;
-    bool initialized;
 };
 
 #endif // STAGE_EDIT_H

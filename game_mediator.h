@@ -9,17 +9,16 @@
 
 #include "file/format.h"
 #include "file/fio_common.h"
-#include "file/fio_strings.h"
 
 class GameMediator
 {
 public:
     static GameMediator* get_instance();
     Mix_Chunk *get_sfx(std::string filename);
-    CURRENT_FILE_FORMAT::file_projectilev3 get_projectile(int n);
+    CURRENT_FILE_FORMAT::file_projectilev2 get_projectile(int n);
     int get_projectile_list_size();
 
-    CURRENT_FILE_FORMAT::file_npc_v3_1_2* get_enemy(int n);
+    CURRENT_FILE_FORMAT::file_npc* get_enemy(int n);
     int get_enemy_list_size();
 #ifdef WII
     void short_to_little_endian(short &s);
@@ -46,19 +45,15 @@ public:
     std::vector<CURRENT_FILE_FORMAT::file_object> object_list;
     std::vector<CURRENT_FILE_FORMAT::file_artificial_inteligence> ai_list;
     std::vector<CURRENT_FILE_FORMAT::file_anim_block> anim_tile_list;
-    std::vector<CURRENT_FILE_FORMAT::file_player_v3_1_1> player_list_v3_1;
-    CURRENT_FILE_FORMAT::file_map_v2 map_data[FS_STAGE_MAX_MAPS];           // map data
-    std::vector<CURRENT_FILE_FORMAT::file_map_npc_v2> map_npc_data;         // map enemy list
-    std::vector<CURRENT_FILE_FORMAT::file_map_object_v2> map_object_data;   // map object list
-    std::vector<CURRENT_FILE_FORMAT::file_projectilev3> projectile_list;
-    std::map<std::string, graphicsLib_gSurface> character_graphic_map;      // character graphics
+    std::vector<CURRENT_FILE_FORMAT::file_player> player_list;
 
 private:
     static GameMediator* _instance;
     std::map<std::string, Mix_Chunk*> sfx_map;                                               // map of sfx files loaded, used in projectiles to avoid loading from disk every time
     fio_common fio_cmm;
 
-    std::vector<CURRENT_FILE_FORMAT::file_npc_v3_1_2> enemy_list;
+    std::vector<CURRENT_FILE_FORMAT::file_projectilev2> projectile_list;
+    std::vector<CURRENT_FILE_FORMAT::file_npc> enemy_list;
 
 
 };

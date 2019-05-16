@@ -2,7 +2,6 @@
 #include <iostream>
 
 #include "fio_scenes.h"
-#include "aux_tools/exception_manager.h"
 
 namespace format_v4 {
 
@@ -131,7 +130,7 @@ namespace format_v4 {
         std::vector<T> res;
         FILE *fp = fopen(filename.c_str(), "rb");
         if (!fp) {
-            std::cout << ">>file_io::load_from_disk - file '" << filename << "' not found." << std::endl;
+            //std::cout << ">>file_io::load_from_disk - file '" << filename << "' not found." << std::endl;
             return res;
         }
 
@@ -140,9 +139,9 @@ namespace format_v4 {
             int res_read = fread(&out, sizeof(T), 1, fp);
             //std::cout << ">>file_io::load_from_disk - res_read '" << res_read << "'." << std::endl;
             if (res_read == -1) {
-                std::cout << ">>file_io::load_from_disk - Error reading data from scenes_list file '" << filename << "'." << std::endl;
+                //std::cout << ">>file_io::load_from_disk - Error reading data from scenes_list file '" << filename << "'." << std::endl;
                 //SDL_Quit();
-                exception_manager::throw_general_exception(std::string("fio_scenes::load_from_disk - Error reading data from file."), filename);
+                exit(-1);
             } else if (res_read == 1) {
                 res.push_back(out);
             }
@@ -154,10 +153,10 @@ namespace format_v4 {
     template <class T> void fio_scenes::save_data_to_disk(std::string file, std::vector<T> data)
     {
         std::string filename = std::string(FILEPATH) + "scenes/" + file;
-        std::cout << ">> file_io::save_data_to_disk - filename: '" << filename << "'." << std::endl;
+        //std::cout << ">> file_io::save_data_to_disk - filename: '" << filename << "'." << std::endl;
         FILE *fp = fopen(filename.c_str(), "wb");
         if (!fp) {
-            std::cout << ">> file_io::save_data_to_disk - file '" << filename << "' not found." << std::endl;
+            //std::cout << ">> file_io::save_data_to_disk - file '" << filename << "' not found." << std::endl;
             return;
         }
 

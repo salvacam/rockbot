@@ -52,6 +52,11 @@ public:
     int get_teleporter();
 
     /**
+     * @brief teleporting-out from screen animation
+     */
+    void teleport_stand();
+
+    /**
      * @brief set the player HP (hit points) back to the default value
      */
     void reset_hp();
@@ -124,8 +129,6 @@ public:
     void recharge(e_energy_types _en_type, int value);
 
     void damage(unsigned int damage_points, bool ignore_hit_timer);
-
-    void damage_spikes(bool ignore_hit_timer);
 
     /**
      * @brief changes the colormap of stored frames surfaces for the current weapon color

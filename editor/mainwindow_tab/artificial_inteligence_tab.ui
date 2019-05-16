@@ -89,7 +89,7 @@
      <item row="0" column="4">
       <widget class="QLabel" name="label_16">
        <property name="text">
-        <string>Next Action</string>
+        <string>Goto Next</string>
        </property>
       </widget>
      </item>
@@ -178,14 +178,14 @@
      <item row="0" column="5">
       <widget class="QLabel" name="label_17">
        <property name="text">
-        <string>Next Action Delay</string>
+        <string>Goto Delay</string>
        </property>
       </widget>
      </item>
      <item row="0" column="1">
       <widget class="QLabel" name="label_7">
        <property name="text">
-        <string>% Chance</string>
+        <string>Chance</string>
        </property>
       </widget>
      </item>
@@ -250,7 +250,7 @@
      <item row="0" column="0">
       <widget class="QLabel" name="label_14">
        <property name="text">
-        <string>Action Number</string>
+        <string>Number</string>
        </property>
       </widget>
      </item>
@@ -361,22 +361,22 @@
      <property name="bottomMargin">
       <number>10</number>
      </property>
-     <item row="0" column="2">
-      <widget class="QLabel" name="label_18">
+     <item row="2" column="0">
+      <widget class="QLabel" name="label_20">
        <property name="text">
-        <string>Extra Parameter</string>
+        <string>Hit</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLabel" name="label_21">
+       <property name="text">
+        <string>Dead</string>
        </property>
       </widget>
      </item>
      <item row="1" column="1">
-      <widget class="QComboBox" name="aiReactionAction_comboBox"/>
-     </item>
-     <item row="0" column="0">
-      <widget class="QLabel" name="label_19">
-       <property name="text">
-        <string>Enemy Reaction Type</string>
-       </property>
-      </widget>
+      <widget class="QComboBox" name="near_action"/>
      </item>
      <item row="0" column="1">
       <widget class="QLabel" name="label_11">
@@ -385,42 +385,41 @@
        </property>
       </widget>
      </item>
-     <item row="1" column="0">
-      <widget class="QComboBox" name="aiReactionType_comboBox">
-       <item>
-        <property name="text">
-         <string>Player is on Range Distance</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>NPC was damaged</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>NPC was killed</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Player is on same Y coord</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Player is Close (1/4 range)</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>TBD</string>
-        </property>
-       </item>
+     <item row="0" column="2">
+      <widget class="QLabel" name="label_18">
+       <property name="text">
+        <string>Extra Parameter</string>
+       </property>
       </widget>
      </item>
+     <item row="0" column="0">
+      <widget class="QLabel" name="label_19">
+       <property name="text">
+        <string>Reaction</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="label_13">
+       <property name="text">
+        <string>Near player</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QComboBox" name="hit_action"/>
+     </item>
+     <item row="2" column="2">
+      <widget class="QComboBox" name="hit_extra_parameter"/>
+     </item>
+     <item row="3" column="1">
+      <widget class="QComboBox" name="dead_action"/>
+     </item>
      <item row="1" column="2">
-      <widget class="QComboBox" name="aiReactionParam_comboBox"/>
+      <widget class="QComboBox" name="near_extra_parameter"/>
+     </item>
+     <item row="3" column="2">
+      <widget class="QComboBox" name="dead_extra_parameter"/>
      </item>
     </layout>
    </item>

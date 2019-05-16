@@ -34,30 +34,19 @@ void init_enum_names() {
     PROJECTILE_TRAJECTORIES_NAMES.push_back("TARGET_EXACT");
     PROJECTILE_TRAJECTORIES_NAMES.push_back("TRAJECTORY FALL BOMB");
     PROJECTILE_TRAJECTORIES_NAMES.push_back("LASER");
-    PROJECTILE_TRAJECTORIES_NAMES.push_back("PUSH");
+    PROJECTILE_TRAJECTORIES_NAMES.push_back("PUSH BACK");
     PROJECTILE_TRAJECTORIES_NAMES.push_back("ARC SMALL");
     PROJECTILE_TRAJECTORIES_NAMES.push_back("RING");
     PROJECTILE_TRAJECTORIES_NAMES.push_back("LIGHTING");
-    PROJECTILE_TRAJECTORIES_NAMES.push_back("SPIRAL");
-    PROJECTILE_TRAJECTORIES_NAMES.push_back("BOUNCING");
-    PROJECTILE_TRAJECTORIES_NAMES.push_back("INVERSE LINEAR");
-    PROJECTILE_TRAJECTORIES_NAMES.push_back("DOUBLE LINEAR");
-    PROJECTILE_TRAJECTORIES_NAMES.push_back("DOUBLE DIAGONAL");
-    PROJECTILE_TRAJECTORIES_NAMES.push_back("BOMB RAIN");
-    PROJECTILE_TRAJECTORIES_NAMES.push_back("LARGE BEAM");
-    PROJECTILE_TRAJECTORIES_NAMES.push_back("PULL");
-    PROJECTILE_TRAJECTORIES_NAMES.push_back("SLASH");
-
-
     // -------------------------------------------------------------- //
     AI_ACTION_NAMES.push_back("WALK");
     AI_ACTION_NAMES.push_back("FLY");
     AI_ACTION_NAMES.push_back("JUMP");
     AI_ACTION_NAMES.push_back("WAIT UNTIL PLAYER IS IN RANGE");
     AI_ACTION_NAMES.push_back("SAVE POINT");
-    AI_ACTION_NAMES.push_back("ATTACK AHEAD");
-    AI_ACTION_NAMES.push_back("ATTACK PLAYER DIRECTION");
-    AI_ACTION_NAMES.push_back("ATTACK (INVERT DIRECTION)");
+    AI_ACTION_NAMES.push_back("SHOT PROJECTILE AHEAD");
+    AI_ACTION_NAMES.push_back("SHOT PROJECTILE PLAYER DIRECTION");
+    AI_ACTION_NAMES.push_back("SHOT PROJECTILE (INVERT DIRECTION)");
     AI_ACTION_NAMES.push_back("AIR WALK");
     AI_ACTION_NAMES.push_back("FALL TO GROUND");
     AI_ACTION_NAMES.push_back("TELEPORT");
@@ -71,13 +60,9 @@ void init_enum_names() {
     AI_ACTION_NAMES.push_back("JUMP ATTACK [UP]");
     AI_ACTION_NAMES.push_back("JUMP ATTACK [AHEAD]");
     AI_ACTION_NAMES.push_back("WAIT TIME [RANDOM]");
-    AI_ACTION_NAMES.push_back("MORPH INTO");
-    AI_ACTION_NAMES.push_back("PLAY SOUND EFFECT");
-
     // -------------------------------------------------------------- //
     AI_ACTION_SHOT_OPTIONS.push_back("FACE PLAYER");
     AI_ACTION_SHOT_OPTIONS.push_back("AHEAD");
-
     // -------------------------------------------------------------- //
     AI_ACTION_WALK_OPTIONS.push_back("HORIZONTAL AHEAD");
     AI_ACTION_WALK_OPTIONS.push_back("HORIZONTAL TURN");
@@ -87,7 +72,6 @@ void init_enum_names() {
     AI_ACTION_WALK_OPTIONS.push_back("RANDOM DIRECTION");
     AI_ACTION_WALK_OPTIONS.push_back("TO OPPOSITE WALL");
 
-    // -------------------------------------------------------------- //
     AI_ACTION_FLY_OPTIONS.push_back("AHEAD");
     AI_ACTION_FLY_OPTIONS.push_back("TURN");
     AI_ACTION_FLY_OPTIONS.push_back("UP");
@@ -103,11 +87,9 @@ void init_enum_names() {
     AI_ACTION_FLY_OPTIONS.push_back("TO OPPOSITE (SHOOT #1)");
     AI_ACTION_FLY_OPTIONS.push_back("TO PLAYER X");
     AI_ACTION_FLY_OPTIONS.push_back("TO PLAYER Y");
-    AI_ACTION_FLY_OPTIONS.push_back("AHEAD [ZIG-ZAG-Y]");
+    AI_ACTION_FLY_OPTIONS.push_back("AHEAD [Y-ZIG-ZAG]");
     AI_ACTION_FLY_OPTIONS.push_back("RANDOM X");
     AI_ACTION_FLY_OPTIONS.push_back("RANDOM Y");
-    AI_ACTION_FLY_OPTIONS.push_back("AHEAD [SIN-Y]");
-    AI_ACTION_FLY_OPTIONS.push_back("AIR-DASH TO PLAYER");
 
     // -------------------------------------------------------------- //
     AI_ACTION_JUMP_OPTIONS.push_back("AHEAD");
@@ -134,12 +116,10 @@ void init_enum_names() {
     AI_ACTION_DASH_OPTIONS.push_back("RIGHT");
     AI_ACTION_DASH_OPTIONS.push_back("TO PLAYER");
     AI_ACTION_DASH_OPTIONS.push_back("TO OPPOSITE WALL");
-    AI_ACTION_DASH_OPTIONS.push_back("AHEAD");
     // -------------------------------------------------------------- //
     AI_ACTION_GRAB_WALL_OPTIONS.push_back("LEFT");
     AI_ACTION_GRAB_WALL_OPTIONS.push_back("RIGHT");
     // -------------------------------------------------------------- //
-
     ANIMATION_TYPE_LIST.push_back("STAND");
     ANIMATION_TYPE_LIST.push_back("WALK");
     ANIMATION_TYPE_LIST.push_back("JUMP");
@@ -155,7 +135,7 @@ void init_enum_names() {
     ANIMATION_TYPE_LIST.push_back("THROW");
     ANIMATION_TYPE_LIST.push_back("TURN [HORIZONTAL]");
     ANIMATION_TYPE_LIST.push_back("MOVE SEMI");
-    ANIMATION_TYPE_LIST.push_back("FLY/WALK-AIR");
+    ANIMATION_TYPE_LIST.push_back("WALK-AIR");
     ANIMATION_TYPE_LIST.push_back("INTRO-PRESENTS");
     ANIMATION_TYPE_LIST.push_back("SPECIAL ATTACK");
     ANIMATION_TYPE_LIST.push_back("SLIDE/DASH");
@@ -169,7 +149,6 @@ void init_enum_names() {
     ANIMATION_TYPE_LIST.push_back("ATTACK [SPACIAL]");
     ANIMATION_TYPE_LIST.push_back("LOOK UP");
     ANIMATION_TYPE_LIST.push_back("GRAB WALL");
-    ANIMATION_TYPE_LIST.push_back("FLY");
 }
 
 

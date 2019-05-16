@@ -20,7 +20,6 @@ namespace format_v4 {
         Uint8 selected_input_device;
         Uint8 selected_language;
         bool turbo_mode;
-        bool auto_charge_mode;
         Uint8 volume_sfx;
         Uint8 volume_music;
         bool android_use_play_services;                     // for android to use cloud save, trophies, etc
@@ -28,11 +27,10 @@ namespace format_v4 {
         Uint8 android_touch_controls_size;                  // for android, size of the on-screen controls 0 = small, 1 = normal, 2 = big
         Sint8 wii_joystick_type;                            // for wii to define between wiimote, classic, gamecube, etc
         Uint8 playstation2_video_mode;                      // for playstation 2, define screen resolution setting
-        Uint8 graphics_performance_mode;                    // 0 => lowend, 1=> normal, 2 => highend
-        bool android_use_cloud_save;
-        bool first_run;
+        Uint8 graphics_performance_mode;                                // 0 => lowend, 1=> normal, 2 => highend
 
-        void get_default_keys(int (&keys_codes_copy)[BTN_COUNT]) {
+
+        void get_default_keys(int keys_codes_copy[BTN_COUNT]) {
 #ifdef PLAYSTATION2
             for (int i=0; i<BTN_COUNT; i++) {
                 keys_codes_copy[i] = -1;
@@ -49,13 +47,13 @@ namespace format_v4 {
             for (int i=0; i<BTN_COUNT; i++) {
                 keys_codes_copy[i] = -1;
             }
-            keys_codes_copy[BTN_SHIELD] = SDLK_LSHIFT;
+            keys_codes_copy[BTN_SHIELD] = SDLK_LCTRL;
             keys_codes_copy[BTN_DASH] = SDLK_SPACE;
-            keys_codes_copy[BTN_ATTACK] = SDLK_LALT;
-            keys_codes_copy[BTN_JUMP] = SDLK_LCTRL;
+            keys_codes_copy[BTN_ATTACK] = SDLK_LSHIFT;
+            keys_codes_copy[BTN_JUMP] = SDLK_LALT;
             keys_codes_copy[BTN_L] = SDLK_TAB;
             keys_codes_copy[BTN_R] = SDLK_BACKSPACE;
-            keys_codes_copy[BTN_QUIT] = SDLK_UNKNOWN;
+            keys_codes_copy[BTN_QUIT] = SDLK_ESCAPE;
             keys_codes_copy[BTN_START] = SDLK_RETURN;
             keys_codes_copy[BTN_LEFT] = SDLK_LEFT;
             keys_codes_copy[BTN_RIGHT] = SDLK_RIGHT;
@@ -76,10 +74,6 @@ namespace format_v4 {
             keys_codes_copy[BTN_RIGHT] = SDLK_RIGHT;
             keys_codes_copy[BTN_UP] = SDLK_UP;
             keys_codes_copy[BTN_DOWN] = SDLK_DOWN;
-#elif RASPBERRY
-            for (int i=0; i<BTN_COUNT; i++) {
-                keys_codes_copy[i] = -1;
-            }
 #else
             keys_codes_copy[BTN_ATTACK] = SDLK_a;
             keys_codes_copy[BTN_JUMP] = SDLK_x;
@@ -96,7 +90,7 @@ namespace format_v4 {
 #endif
         }
 
-        void get_default_buttons(st_input_button_config (&button_codes_copy)[BTN_COUNT]) {
+        void get_default_buttons(st_input_button_config button_codes_copy[BTN_COUNT]) {
             // reset values
             for (int i=0; i<BTN_COUNT; i++) {
                 button_codes_copy[i].type = JOYSTICK_INPUT_TYPE_BUTTON;
@@ -104,27 +98,25 @@ namespace format_v4 {
                 button_codes_copy[i].axis_type = 0;
             }
 
+
             // COMMON INPUT FOR JOYSTICK AXIS //
-
-            //std::cout << "#1 BTN_DOWN[" << BTN_DOWN << "].axis_type[" << button_codes_copy[BTN_DOWN].axis_type << "].value[" << button_codes_copy[BTN_DOWN].value << "]" << std::endl;
-
             button_codes_copy[BTN_DOWN].axis_type = 1;
             button_codes_copy[BTN_DOWN].type = JOYSTICK_INPUT_TYPE_AXIS;
             button_codes_copy[BTN_DOWN].value = 1;
 
-            //std::cout << "#2 BTN_DOWN[" << BTN_DOWN << "].axis_type[" << button_codes_copy[BTN_DOWN].axis_type << "].value[" << button_codes_copy[BTN_DOWN].value << "]" << std::endl;
-
             button_codes_copy[BTN_UP].axis_type = -1;
             button_codes_copy[BTN_UP].type = JOYSTICK_INPUT_TYPE_AXIS;
-            button_codes_copy[BTN_UP].value = 1;
+            button_codes_copy[BTN_DOWN].value = 1;
 
             button_codes_copy[BTN_RIGHT].axis_type = 1;
             button_codes_copy[BTN_RIGHT].type = JOYSTICK_INPUT_TYPE_AXIS;
-            button_codes_copy[BTN_RIGHT].value = 0;
+            button_codes_copy[BTN_DOWN].value = 0;
 
             button_codes_copy[BTN_LEFT].axis_type = -1;
             button_codes_copy[BTN_LEFT].type = JOYSTICK_INPUT_TYPE_AXIS;
-            button_codes_copy[BTN_LEFT].value = 0;
+            button_codes_copy[BTN_DOWN].value = 0;
+
+
 
 #ifdef PLAYSTATION2
             button_codes_copy[BTN_SHIELD].type = JOYSTICK_INPUT_TYPE_BUTTON;
@@ -143,20 +135,14 @@ namespace format_v4 {
             button_codes_copy[BTN_QUIT].value = -1;
             button_codes_copy[BTN_START].type = JOYSTICK_INPUT_TYPE_BUTTON;
             button_codes_copy[BTN_START].value = 5;
-
-            button_codes_copy[BTN_DOWN].axis_type = 1;
-            button_codes_copy[BTN_DOWN].type = JOYSTICK_INPUT_TYPE_AXIS;
-            button_codes_copy[BTN_DOWN].value = 1;
-            button_codes_copy[BTN_UP].axis_type = -1;
-            button_codes_copy[BTN_UP].type = JOYSTICK_INPUT_TYPE_AXIS;
-            button_codes_copy[BTN_UP].value = 1;
-            button_codes_copy[BTN_RIGHT].axis_type = 1;
-            button_codes_copy[BTN_RIGHT].type = JOYSTICK_INPUT_TYPE_AXIS;
-            button_codes_copy[BTN_RIGHT].value = 0;
-            button_codes_copy[BTN_LEFT].axis_type = -1;
-            button_codes_copy[BTN_LEFT].type = JOYSTICK_INPUT_TYPE_AXIS;
-            button_codes_copy[BTN_LEFT].value = 0;
-
+            button_codes_copy[BTN_LEFT].type = JOYSTICK_INPUT_TYPE_BUTTON;
+            button_codes_copy[BTN_LEFT].value = -1; // uses default axis
+            button_codes_copy[BTN_RIGHT].type = JOYSTICK_INPUT_TYPE_BUTTON;
+            button_codes_copy[BTN_RIGHT].value = -1; // uses default axis
+            button_codes_copy[BTN_UP].type = JOYSTICK_INPUT_TYPE_BUTTON;
+            button_codes_copy[BTN_UP].value = -1; // uses default axis
+            button_codes_copy[BTN_DOWN].type = JOYSTICK_INPUT_TYPE_BUTTON;
+            button_codes_copy[BTN_DOWN].value = -1; // uses default axis
 #elif PSP
             button_codes_copy[BTN_SHIELD].type = JOYSTICK_INPUT_TYPE_BUTTON;
             button_codes_copy[BTN_SHIELD].value = 3;
@@ -249,42 +235,40 @@ namespace format_v4 {
             // start //
             button_codes_copy[BTN_START].type = JOYSTICK_INPUT_TYPE_BUTTON;
             button_codes_copy[BTN_START].value = 9;
-#elif RASPBERRY
-            // shield, tiro, pulo, slide
-            // QUIT e START: OK
+#elif DINGUX
             button_codes_copy[BTN_ATTACK].type = JOYSTICK_INPUT_TYPE_BUTTON;
-            button_codes_copy[BTN_ATTACK].value = 5;
+            button_codes_copy[BTN_ATTACK].value = SDLK_LCTRL;
             button_codes_copy[BTN_JUMP].type = JOYSTICK_INPUT_TYPE_BUTTON;
-            button_codes_copy[BTN_JUMP].value = 4;
+            button_codes_copy[BTN_JUMP].value = SDLK_LALT;
             button_codes_copy[BTN_DASH].type = JOYSTICK_INPUT_TYPE_BUTTON;
-            button_codes_copy[BTN_DASH].value = 0;
+            button_codes_copy[BTN_DASH].value = SDLK_LSHIFT;
             button_codes_copy[BTN_SHIELD].type = JOYSTICK_INPUT_TYPE_BUTTON;
-            button_codes_copy[BTN_SHIELD].value = 1;
+            button_codes_copy[BTN_SHIELD].value = SDLK_SPACE;
             button_codes_copy[BTN_L].type = JOYSTICK_INPUT_TYPE_BUTTON;
-            button_codes_copy[BTN_L].value = 3;
+            button_codes_copy[BTN_L].value = SDLK_TAB;
             button_codes_copy[BTN_R].type = JOYSTICK_INPUT_TYPE_BUTTON;
-            button_codes_copy[BTN_R].value = 2;
+            button_codes_copy[BTN_R].value = SDLK_BACKSPACE;
             button_codes_copy[BTN_QUIT].type = JOYSTICK_INPUT_TYPE_BUTTON;
-            button_codes_copy[BTN_QUIT].value = 8;
+            button_codes_copy[BTN_QUIT].value = SDLK_ESCAPE;
             button_codes_copy[BTN_START].type = JOYSTICK_INPUT_TYPE_BUTTON;
-            button_codes_copy[BTN_START].value = 9;
+            button_codes_copy[BTN_START].value = SDLK_RETURN;
 #else
             button_codes_copy[BTN_ATTACK].type = JOYSTICK_INPUT_TYPE_BUTTON;
-            button_codes_copy[BTN_ATTACK].value = 2;
+            button_codes_copy[BTN_ATTACK].value = SDLK_LCTRL;
             button_codes_copy[BTN_JUMP].type = JOYSTICK_INPUT_TYPE_BUTTON;
-            button_codes_copy[BTN_JUMP].value = 1;
+            button_codes_copy[BTN_JUMP].value = SDLK_LALT;
             button_codes_copy[BTN_DASH].type = JOYSTICK_INPUT_TYPE_BUTTON;
-            button_codes_copy[BTN_DASH].value = 0;
+            button_codes_copy[BTN_DASH].value = SDLK_LSHIFT;
             button_codes_copy[BTN_SHIELD].type = JOYSTICK_INPUT_TYPE_BUTTON;
-            button_codes_copy[BTN_SHIELD].value = 3;
+            button_codes_copy[BTN_SHIELD].value = SDLK_SPACE;
             button_codes_copy[BTN_L].type = JOYSTICK_INPUT_TYPE_BUTTON;
-            button_codes_copy[BTN_L].value = 6;
+            button_codes_copy[BTN_L].value = SDLK_TAB;
             button_codes_copy[BTN_R].type = JOYSTICK_INPUT_TYPE_BUTTON;
-            button_codes_copy[BTN_R].value = 7;
+            button_codes_copy[BTN_R].value = SDLK_BACKSPACE;
             button_codes_copy[BTN_QUIT].type = JOYSTICK_INPUT_TYPE_BUTTON;
-            button_codes_copy[BTN_QUIT].value = 8;
+            button_codes_copy[BTN_QUIT].value = SDLK_ESCAPE;
             button_codes_copy[BTN_START].type = JOYSTICK_INPUT_TYPE_BUTTON;
-            button_codes_copy[BTN_START].value = 9;
+            button_codes_copy[BTN_START].value = SDLK_RETURN;
 #endif
         }
 
@@ -326,8 +310,6 @@ namespace format_v4 {
             return PLATFORM_WII;
     #elif DREAMCAST
             return PLATFORM_DREAMCAST;
-    #elif RASPBERRY
-            return PLATFORM_RASPBERRY;
     #else
             return PLATFORM_WINDOWS;
     #endif
@@ -344,7 +326,6 @@ namespace format_v4 {
             selected_input_device = 0;
             selected_language = 0;
             turbo_mode = false;
-            auto_charge_mode = false;
             volume_sfx = 90;
             volume_music = 128;
 
@@ -354,13 +335,11 @@ namespace format_v4 {
             wii_joystick_type = 0;
             playstation2_video_mode = 0;
             graphics_performance_mode = PERFORMANCE_MODE_HIGH;
-            android_use_cloud_save = false;
         }
 
 
         st_game_config() {
             game_finished = false;
-            first_run = true;
             reset();
         }
     };

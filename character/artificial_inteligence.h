@@ -10,37 +10,6 @@
  */
 enum e_action_states { IA_ACTION_STATE_INITIAL, IA_ACTION_STATE_EXECUTING, IA_ACTION_STATE_FINISHED  };
 
-enum e_can_move_result {
-    CAN_MOVE_SUCESS,
-    CAN_MOVE_LEAVE_TRUE,
-    CAN_MOVE_LEAVE_FALSE,
-    CAN_MOVE_COUNT
-};
-
-struct can_move_struct {
-    float xinc;
-    float yinc;
-    bool can_move_x;
-    bool can_move_y;
-    e_can_move_result result;
-
-    can_move_struct() {
-        xinc = 0;
-        yinc = 0;
-        can_move_x = true;
-        can_move_y = true;
-        result = CAN_MOVE_SUCESS;
-    }
-
-    can_move_struct(float set_xinc, float set_yinc, bool set_can_move_x, bool set_can_move_y,e_can_move_result result_value) {
-        xinc = set_xinc;
-        yinc = set_yinc;
-        can_move_x = set_can_move_x;
-        can_move_y = set_can_move_y;
-        result = result_value;
-    }
-};
-
 /**
  * @brief holds information about the distance of the current NPC for the closest player
  */
@@ -95,7 +64,6 @@ public:
     void ground_damage_players();
 
     void push_back_players(short direction);
-    void pull_players(short direction);
 
     bool auto_respawn() const;
 
@@ -106,8 +74,6 @@ public:
     void execute_ai();
 
     void hit_player();
-
-    bool is_teleporting();
 
 
 protected:
@@ -192,7 +158,7 @@ protected:
     void execute_ai_step_jump_to_wall();
 
 
-    void execute_ai_replace_itself(bool morph);
+    void execute_ai_replace_itself();
 
     void execute_ai_step_spawn_npc();
 
@@ -200,12 +166,24 @@ protected:
 
     void ia_action_teleport();
 
+
+
+
     void check_ai_reaction();
 
+    /**
+     * @brief
+     */
     void define_ai_next_step();
 
+    /**
+     * @brief
+     */
     void execute_ai_step();
 
+    /**
+     * @brief
+     */
     void execute_ai_step_walk();
 
     /**
@@ -250,8 +228,6 @@ protected:
      */
     bool move_to_point(st_float_position dest_point, float speed_x, float speed_y, bool can_pass_walls);
 
-    can_move_struct check_can_move_to_point(st_float_position dest_point, float speed_x, float speed_y, bool can_pass_walls);
-
 
     void randomize_x_point(int max_adjust);
 
@@ -269,9 +245,6 @@ protected:
 
     bool uses_fly_fall(); // uses to respawn it inside holes
 
-    void invert_left_right_direction();
-
-
 
 
 protected:
@@ -282,7 +255,6 @@ protected:
     float acceleration_y; /**< TODO */
     st_position _origin_point;							// used as target for moving /**< TODO */
     st_float_position _dest_point; /**< TODO */
-    st_float_position _saved_point; /**< TODO */
 
 
     struct_ia_state _ai_state; /**< TODO */
@@ -299,7 +271,6 @@ protected:
     trajectory_parabola *_trajectory_parabola;          // used for jumping to a specific point
     bool _did_shot;                                         // used to avoid shooting multiple times
     st_float_position _diagonal_speed;
-    float _sin_x;                                       // used for sinoidal movement
     int _reaction_state;                                // used to control reaction so it won't execute two times or over an executing state
                                                         // 0 - waiting, 1 - executing
     int _reaction_type;                                 // 1: near, 2: hit, 3: dead

@@ -29,7 +29,6 @@ bool GAME_FLAGS[FLAG_COUNT];
 
 void remove_duplicated()
 {
-    /*
 	for (int i=0; i<MAX_STAGES; i++) {
 		for (int j=0; j<STAGE_MAX_MAPS; j++) {
 			// remove duplicated NPCS
@@ -59,7 +58,6 @@ void remove_duplicated()
 			}
 		}
 	}
-    */
 }
 
 void adjust_sprites_size() {
@@ -93,8 +91,6 @@ int main(int argc, char *argv[])
 	#endif
 
 	std::string argvString = std::string(argv[0]);
-
-
     GAMEPATH = argvString.substr(0, argvString.size()-EXEC_NAME.size());
     std::cout << " *** EXEC_NAME: " << EXEC_NAME << ", FILEPATH: " << FILEPATH << ", SAVEPATH: " << SAVEPATH << " ***" << std::endl;
 

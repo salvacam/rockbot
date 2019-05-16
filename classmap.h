@@ -35,10 +35,8 @@ struct water_bubble {
     st_position pos;
     float x_adjust;
     int x_adjust_direction;
-    float timer;
+    unsigned int timer;
 };
-
-
 
 
 struct st_level3_tile {
@@ -89,7 +87,7 @@ public:
 
     void loadMap();
 
-    void show_map();
+    void showMap();
 
     void draw_map_tiles();
 
@@ -97,7 +95,7 @@ public:
 
     void init_animated_tiles();
 
-    void showAbove(int scroll_y=0, int temp_scroll_x = -99999, bool show_fg=true);
+    void showAbove(int scroll_y=0, int temp_scroll_x = -99999);
 
     bool is_point_solid(st_position pos) const;
 
@@ -139,8 +137,6 @@ public:
 
     void reset_beam_objects();
 
-    void remove_temp_objects();
-
     void get_map_area_surface(graphicsLib_gSurface &mapSurface);
 
     void set_scrolling(st_float_position pos);
@@ -163,26 +159,17 @@ public:
 
     classnpc *spawn_map_npc(short int npc_id, st_position npc_pos, short direction, bool player_friend, bool progressive_span);
 
-    int child_npc_count(int parent_id);
-
     void move_npcs();
 
     void show_npcs();
-    void show_npcs_to_left(int x);
 
     void move_objects(bool paused);
-
-    void clean_finished_objects();
 
     std::vector<object*> check_collision_with_objects(st_rectangle collision_area);
 
     void show_objects(int adjust_y=0, int adjust_x=0);
 
-    void show_above_objects(int adjust_y=0, int adjust_x=0);
-
-    bool boss_hit_ground(classnpc *npc_ref);
-
-    classnpc* get_near_boss();
+    bool boss_hit_ground();
 
     void reset_map_npcs();
 
@@ -190,26 +177,19 @@ public:
 
     void add_object(object obj);
 
-    st_position get_first_lock_in_direction(st_position pos, st_size max_dist, int direction);
-
     int get_first_lock_on_left(int x_pos) const;
 
     int get_first_lock_on_right(int x_pos) const;
 
-    int get_first_lock_on_bottom(int x_pos, int y_pos);
+    int get_first_lock_on_bottom(int x_pos);
 
-    int get_first_lock_on_bottom(int x_pos, int y_pos, int w, int h);
-
-    void drop_item(classnpc *npc_ref);
+    void drop_item(int i);
 
     void set_bg_scroll(int scrollx);
 
     int get_bg_scroll() const;
 
-    void reset_map_timers();
-    void reset_enemies_timers();
     void reset_objects_timers();
-    void reset_objects_anim_timers();
 
     void reset_objects(); // restore objects to their original position
 
@@ -231,23 +211,19 @@ public:
 
     st_float_position get_bg_scroll();
     void set_bg_scroll(st_float_position pos);
+
     st_rectangle get_player_hitbox();
-    st_float_position get_foreground_postion();
-    void set_foreground_postion(st_float_position pos);
-    bool must_show_static_bg();                                 // method used to prevent showing enemies on transition if showing static-bg
 
 private:
     void load_map_npcs();
 
     void draw_dynamic_backgrounds();
-    void draw_static_background();
 
     void draw_foreground_layer(int scroll_x, int scroll_y);
 
     void adjust_dynamic_background_position();
 
     void adjust_foreground_position();
-
 
     bool value_in_range(int value, int min, int max) const;
 
@@ -256,16 +232,11 @@ private:
     graphicsLib_gSurface* get_dynamic_bg();
 
     graphicsLib_gSurface* get_dynamic_foreground();
-    void set_map_enemy_static_background(std::string filename, st_position pos);
-
 
 
 public:
-    std::vector<classnpc> _npc_list;                                        // vector npcs
-    std::vector<classnpc> _npc_spawn_list;                                  // list of enemyes to be spawned, after added into _npc_list
-
-
-    classPlayer* _player_ref;                                               // vector players
+    std::vector<classnpc> _npc_list; // vector npcs
+    classPlayer* _player_ref; // vector players
     std::vector<animation> animation_list;
 	// vector teleporters
 	// vector objects
@@ -274,12 +245,10 @@ public:
 private:
     int stage_number;
     struct st_float_position scroll;
-    st_float_position scrolled;                                             // stores the value the map scrolled in this cycle. used for character movement control (it should move taking the scroll in account)
+    st_float_position scrolled;						// stores the value the map scrolled in this cycle. used for character movement control (it should move taking the scroll in account)
     bool wall_scroll_lock[MAP_W];
     st_float_position bg_scroll;
     st_float_position fg_layer_scroll;
-    graphicsLib_gSurface static_bg;
-    st_position static_bg_pos;
     short _platform_leave_counter;
     water_bubble _water_bubble;
     st_rectangle _3rd_level_ignore_area;
@@ -287,9 +256,9 @@ private:
     std::vector<st_level3_tile> _level3_tiles;
     std::vector<object> object_list;
     // DRAW MEMBERS //
-    int _show_map_pos_x;                                                    // this is used to compare the position that the map was drawn last time to the current scrolling to check if map needs to be redrawn
-    graphicsLib_gSurface map_screen;                                        // use to avoid having to draw the tilesets each time we update screen
-    std::vector<anim_tile_desc> anim_tile_list;                             // list of animated tiles, so we don't need to loop through all tiles when drawing only the animated ones
+    int _show_map_pos_x;                            // this is used to compare the position that the map was drawn last time to the current scrolling to check if map needs to be redrawn
+    graphicsLib_gSurface map_screen;                // use to avoid having to draw the tilesets each time we update screen
+    std::vector<anim_tile_desc> anim_tile_list;     // list of animated tiles, so we don't need to loop through all tiles when drawing only the animated ones
 };
 
 

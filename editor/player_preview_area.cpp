@@ -3,7 +3,6 @@
 #include <QString>
 #include <QImage>
 #include <QBitmap>
-#include <QPixmap>
 
 #include "mediator.h"
 
@@ -18,16 +17,11 @@ QWidget(parent), selected_player(0)
 void player_preview_area::update_sprites()
 {
     QString filename = QString(FILEPATH.c_str()) + QString("/images/sprites/") + QString(Mediator::get_instance()->player_graphics_data.graphics_filename.c_str());
-    QPixmap sprites = QPixmap(filename);
-    if (sprites.isNull() == true || sprites.width() <= 0) {
+    _original_sprites = QImage(filename);
+    if (_original_sprites.isNull() == true || _original_sprites.width() <= 0) {
         return;
     }
-
-    QBitmap mask = sprites.createMaskFromColor(QColor(75, 125, 125), Qt::MaskInColor);
-    sprites.setMask(mask);
-    _original_sprites = sprites.toImage();
-
-    //std::cout << ">>>>>>>>>>>>>>>>> count[" << _original_sprites.colorCount() << "]" << std::endl;
+    std::cout << ">>>>>>>>>>>>>>>>> count[" << _original_sprites.colorCount() << "]" << std::endl;
     _original_sprites = _original_sprites.scaled(_original_sprites.width()*PREVIEW_SCALE, _original_sprites.height()*PREVIEW_SCALE+1);
 
     replace_colors();
@@ -37,7 +31,7 @@ void player_preview_area::update_sprites()
 void player_preview_area::replace_colors()
 {
 
-    //std::cout << "### PLAYERPREVIEW::PAINT::START ###" << std::endl;
+    std::cout << "### PLAYERPREVIEW::PAINT::START ###" << std::endl;
 
     _colored_sprites = _original_sprites.copy();
 
@@ -81,9 +75,9 @@ void player_preview_area::replace_colors()
         return;
     }
 
-    st_color color1 = Mediator::get_instance()->player_list_v3_1[player_n].weapon_colors[weapon_n].color1;
-    st_color color2 = Mediator::get_instance()->player_list_v3_1[player_n].weapon_colors[weapon_n].color2;
-    st_color color3 = Mediator::get_instance()->player_list_v3_1[player_n].weapon_colors[weapon_n].color3;
+    st_color color1 = Mediator::get_instance()->player_list[player_n].weapon_colors[weapon_n].color1;
+    st_color color2 = Mediator::get_instance()->player_list[player_n].weapon_colors[weapon_n].color2;
+    st_color color3 = Mediator::get_instance()->player_list[player_n].weapon_colors[weapon_n].color3;
 
     QColor replace_color1((int)color1.r, (int)color1.g, (int)color1.b);
     QColor replace_color2((int)color2.r, (int)color2.g, (int)color2.b);

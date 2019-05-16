@@ -1,7 +1,6 @@
 #include "stringseditor.h"
 #include "ui_stringseditor.h"
 #include "aux_tools/stringutils.h"
-#include "common.h"
 
 #include <QMessageBox>
 #include <QCloseEvent>
@@ -12,26 +11,9 @@ extern std::string FILEPATH;
 StringsEditor::StringsEditor(QWidget *parent, int mode) : QDialog(parent), ui(new Ui::StringsEditor), string_edit_model(this), scenes_string_edit_model(this), target_qline(NULL), target_property(NULL)
 {
     pick_mode = mode;
-    string_list = fio_str.load_game_strings(LANGUAGE_ENGLISH, false);
+    string_list = fio_str.load_game_strings();
     ui->setupUi(this);
-    common::fill_languages_combo(ui->languageSelector_comboBox);
-    reload();
-}
 
-
-void StringsEditor::save()
-{
-    fio_str.save_common_strings(string_edit_model.get_data(), ui->languageSelector_comboBox->currentIndex());
-    ui->gameCredits_widget->save_data();
-}
-
-StringsEditor::~StringsEditor()
-{
-    delete ui;
-}
-
-void StringsEditor::reload()
-{
     data_loading = true;
 
 
@@ -61,7 +43,7 @@ void StringsEditor::reload()
 
     // ==================== COMMON STRINGS ==================== //
 
-    std::vector<std::string> common_string_list = fio_str.get_common_strings(ui->languageSelector_comboBox->currentIndex(), false);
+    std::vector<std::string> common_string_list = fio_str.get_common_strings();
     string_edit_model.set_data(common_string_list);
     string_edit_model.set_pick_mode(pick_mode);
     ui->commonStrings_tableView->setModel(&string_edit_model);
@@ -75,7 +57,15 @@ void StringsEditor::reload()
 
     // ==================== SCENES STRINGS ==================== //
 
+    std::vector<std::string> scenes_string_list = fio_str.get_scenes_strings();
+    scenes_string_edit_model.set_data(scenes_string_list);
     scenes_string_edit_model.set_pick_mode(pick_mode);
+    ui->scenesStrings_tableView->setModel(&scenes_string_edit_model);
+#if QT_VERSION >= 0x050000
+    ui->scenesStrings_tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch); // Qt5
+#else
+    ui->scenesStrings_tableView->horizontalHeader()->setStretchLastSection(true); // Qt4
+#endif
 
     data_loading = false;
 
@@ -85,13 +75,30 @@ void StringsEditor::reload()
         ui->languageName_lineEdit->setVisible(false);
         ui->addCommonString_pushButton->setEnabled(false);
         ui->addCommonString_pushButton->setVisible(false);
+        ui->addScenesString_pushButton->setEnabled(false);
+        ui->addScenesString_pushButton->setVisible(false);
         if (pick_mode == pick_mode_common) {
             ui->tabWidget->setCurrentIndex(1);
             ui->tabWidget->setTabEnabled(2, false);
+        } else if (pick_mode == pick_mode_scenes) {
+            ui->tabWidget->setCurrentIndex(2);
+            ui->tabWidget->setTabEnabled(1, false);
         }
 
     }
+}
 
+
+void StringsEditor::save()
+{
+    fio_str.save_common_strings(string_edit_model.get_data());
+    fio_str.save_scenes_strings(scenes_string_edit_model.get_data());
+    ui->gameCredits_widget->save_data();
+}
+
+StringsEditor::~StringsEditor()
+{
+    delete ui;
 }
 
 void StringsEditor::save_data()
@@ -99,7 +106,7 @@ void StringsEditor::save_data()
     if (current_lang.length() != 2) {
         return;
     }
-    fio_str.save_game_strings(translation_string_list, fio_str.get_game_strings_filename(ui->languageSelector_comboBox->currentIndex()));
+    fio_str.save_game_strings(translation_string_list, fio_str.get_game_strings_filename());
 }
 
 void StringsEditor::set_target_qline(QLineEdit *line)
@@ -133,9 +140,6 @@ void StringsEditor::closeEvent(QCloseEvent *event)
         QMessageBox::StandardButton resBtn = QMessageBox::question( this, "Rockbot Editor :: Movie Editor", tr("Save data before leaving?\n"), QMessageBox::Cancel | QMessageBox::No | QMessageBox::Yes, QMessageBox::Yes);
         if (resBtn == QMessageBox::Yes) {
             save();
-        } else if (resBtn == QMessageBox::Cancel) {
-            event->ignore();
-            return;
         }
     }
     event->accept();
@@ -185,6 +189,8 @@ void StringsEditor::on_buttonBox_accepted()
     QModelIndexList selectedList;
     if (pick_mode == pick_mode_common) {
         selectedList = ui->commonStrings_tableView->selectionModel()->selectedRows();
+    } else if (pick_mode == pick_mode_scenes) {
+        selectedList = ui->scenesStrings_tableView->selectionModel()->selectedRows();
     }
     for (int i=0; i<selectedList.count(); i++) {
         emit on_accepted(selectedList.at(i).row());
@@ -203,8 +209,9 @@ void StringsEditor::on_buttonBox_rejected()
 
 void StringsEditor::load_language(std::string filename)
 {
-    translation_string_list = fio_str.load_game_strings_from_file(filename, ui->languageSelector_comboBox->currentIndex(), false);
+    translation_string_list = fio_str.load_game_strings_from_file(filename);
     fill_translation();
+
 }
 
 
@@ -252,12 +259,4 @@ void StringsEditor::on_addCommonString_pushButton_clicked()
 void StringsEditor::on_addScenesString_pushButton_clicked()
 {
     scenes_string_edit_model.add_line();
-}
-
-void StringsEditor::on_languageSelector_comboBox_currentIndexChanged(int index)
-{
-    if (data_loading) { return; }
-    fio_str.save_common_strings(string_edit_model.get_data(), ui->languageSelector_comboBox->currentIndex());
-    ui->gameCredits_widget->save_data();
-    reload();
 }

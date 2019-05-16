@@ -10,13 +10,6 @@
 	#include <pspdebug.h>
 #endif
 
-#ifdef ANDROID
-#include <android/log.h>
-#include "ports/android/android_game_services.h"
-extern android_game_services game_services;
-#endif
-
-
 #include "timerlib.h"
 extern timerLib timer;
 
@@ -31,13 +24,12 @@ extern soundLib soundManager;
 #include "inputlib.h"
 extern inputLib input;
 
-extern std::string GAMENAME;
-
 #include "graphic/option_picker.h"
 #include "file/format.h"
 #include "defines.h"
 #include "file/file_io.h"
 #include "file/fio_strings.h"
+
 #include "strings_map.h"
 
 extern CURRENT_FILE_FORMAT::st_save game_save;
@@ -47,6 +39,11 @@ extern CURRENT_FILE_FORMAT::file_io fio;
 
 extern struct CURRENT_FILE_FORMAT::st_checkpoint checkpoint;
 extern bool run_game;
+
+#ifdef ANDROID
+#include <android/log.h>
+#endif
+
 
 extern string FILEPATH;
 
@@ -64,19 +61,18 @@ extern std::map<Uint8, Uint8> game_scenes_map;
 #include "aux_tools/fps_control.h"
 extern fps_control fps_manager;
 
-
 // ********************************************************************************************** //
 // class constructor                                                                              //
 // ********************************************************************************************** //
-game::game() : loaded_stage(-1, NULL), _show_boss_hp(false), player1(0)
+game::game() : loaded_stage(-1, NULL), _show_boss_hp(false), fps_timer(0), player1(0)
 {
-    currentStage = INTRO_STAGE;
+	currentStage = 1;
+	fps_counter = 0;
 	_frame_duration = 1000/80; // each frame must use this share of time
     invencible_old_value = false;
     _dark_mode = false;
     is_showing_boss_intro = false;
-    current_save_slot = 0;
-    show_fps_enabled = false;
+    must_break_npc_loop = false;
 }
 
 // ********************************************************************************************** //
@@ -85,7 +81,6 @@ game::game() : loaded_stage(-1, NULL), _show_boss_hp(false), player1(0)
 game::~game()
 {
 }
-
 
 // ********************************************************************************************** //
 // initializar game, can't be on constructor because it needs other objects (circular)            //
@@ -101,15 +96,13 @@ void game::initGame()
 
     invencible_old_value = GAME_FLAGS[FLAG_INVENCIBLE];
 
-    fps_manager.initialize();
-
 }
 
 
 // ********************************************************************************************** //
 //                                                                                                //
 // ********************************************************************************************** //
-void game::show_game(bool can_characters_move, bool can_scroll_stage)
+void game::showGame(bool can_characters_move, bool can_scroll_stage)
 {
     if (leave_game == true) {
         exit_game();
@@ -122,17 +115,12 @@ void game::show_game(bool can_characters_move, bool can_scroll_stage)
         return;
     }
 
-    // must jump a frame
-    if (fps_manager.get_frame_drop_n() > 0 && fps_manager.get_current_frame_n() > 0) {
-        int modulus = fps_manager.get_frame_drop_n() % fps_manager.get_current_frame_n();
-        //std::cout << "MUST JUMP-FRAMES AT [" << fps_manager.get_frame_drop_n() << "], current-frame[" << fps_manager.get_current_frame_n() << "], modulus[" << modulus << "]" << std::endl;
-        if (modulus == 0 && show_fps_enabled == true) {
-            //std::cout << "JUMP FRAME[" << fps_manager.get_current_frame_n() << "]" << std::endl;
-            fps_manager.fps_count();
-            return;
-        }
+    /// @TODO - move this to the player, so we don't need to check every single loop
+    if (player1.is_dead() == true) {
+        //std::cout << "### DEAD - RESTART_STAGE ###" << std::endl;
+        restart_stage();
+        return;
     }
-
 
     if (test_teleport(&player1)) {
         return;
@@ -146,7 +134,7 @@ void game::show_game(bool can_characters_move, bool can_scroll_stage)
     }
 
     if (_dark_mode == false) {
-        loaded_stage.show_stage();
+        loaded_stage.showStage();
     }
 
     if (can_characters_move == true) {
@@ -154,18 +142,10 @@ void game::show_game(bool can_characters_move, bool can_scroll_stage)
         loaded_stage.move_npcs();
     }
 
-    /// @TODO - move this to the player, so we don't need to check every single loop
-    if (player1.is_dead() == true) {
-        //std::cout << "### DEAD - RESTART_STAGE ###" << std::endl;
-        restart_stage();
-        return;
-    }
-
     if (_dark_mode == false) {
-        loaded_stage.show_objects();
         loaded_stage.show_npcs();
         player1.show();
-        loaded_stage.show_above_objects();
+        loaded_stage.show_objects();
         loaded_stage.showAbove();
     } else {
         graphLib.blank_screen();
@@ -179,24 +159,8 @@ void game::show_game(bool can_characters_move, bool can_scroll_stage)
     }
 
     // draw HUD
-    draw_lib.show_hud(player1.get_current_hp(), 1, player1.get_selected_weapon(), player1.get_selected_weapon_value());
+    draw_lib.show_player_hp(player1.get_current_hp(), 1, player1.get_selected_weapon(), player1.get_selected_weapon());
 
-    if (show_fps_enabled == true) {
-        fps_manager.fps_count();
-    }
-    fps_manager.limit();
-
-    /*
-    // REMOVED BECAUSE IT IS NOT USER FRIENDLY //
-    if (fps_manager.get_failed_min_fps() == true) {
-        if (game_config.graphics_performance_mode == PERFORMANCE_MODE_HIGH) {
-            game_config.graphics_performance_mode = PERFORMANCE_MODE_NORMAL;
-        } else if (game_config.graphics_performance_mode == PERFORMANCE_MODE_NORMAL) {
-            game_config.graphics_performance_mode = PERFORMANCE_MODE_LOW;
-        }
-        fps_manager.reset_failed_min_fps();
-    }
-    */
 }
 
 // ********************************************************************************************** //
@@ -230,6 +194,9 @@ st_float_position game::checkScrolling()
 // ********************************************************************************************** //
 void game::start_stage()
 {
+
+
+
 	_show_boss_hp = false;
     input.clean();
 
@@ -245,96 +212,50 @@ void game::start_stage()
     loaded_stage.reload_stage();
 
     player1.cancel_slide();
-    player1.reset_jump();
+
+
+    loaded_stage.showStage();
+    loaded_stage.showAbove();
+    draw_lib.update_screen();
+
 
     player1.clean_projectiles();
+    player1.set_animation_type(ANIM_TYPE_TELEPORT);
     player1.set_direction(ANIM_DIRECTION_RIGHT);
     player1.refill_weapons();
     player1.reset_hp();
 
-    loaded_stage.show_stage();
-    loaded_stage.showAbove();
-    //draw_lib.update_screen();
-    draw_lib.fade_in_screen(0, 0, 0, 1000);
+    // find teleport stop point
+    int min_y = loaded_stage.get_teleport_minimal_y_tile(85); // x = 70 + half a player width (30)
+    player1.set_teleport_minimal_y(min_y*TILESIZE);
 
     game_unpause();
 
+    show_ready();
+
     soundManager.play_music();
 
+
+    while (player1.get_anim_type() == ANIM_TYPE_TELEPORT) {
+        input.clean_all();
+        showGame(true, false);
+        draw_lib.update_screen();
+    }
     for (int i=0; i<AUTOSCROLL_START_DELAY_FRAMES; i++) { // extra delay to show dialogs
-        input.read_input();
-        input.clean_confirm_button();
-        loaded_stage.show_stage();
-        loaded_stage.showAbove();
-        draw_lib.update_screen();
-        timer.delay(20);
-    }
-    loaded_stage.add_autoscroll_delay();
-
-    show_player_teleport(PLAYER_INITIAL_X_POS, -1);
-    if (!game_save.stages[currentStage]) {
-        game_dialogs.show_stage_dialog(currentStage);
-    }
-    show_game(false, false);
-    // reset timers for objects
-    loaded_stage.reset_objects_timers();
-
-
-}
-
-void game::set_player_position_teleport_in(int initial_pos_x, int initial_pos_y)
-{
-    int first_unlocked_from_bottom = loaded_stage.get_current_map()->get_first_lock_on_bottom(initial_pos_x, initial_pos_y, player1.get_size().width, player1.get_size().height);
-
-    //std::cout << ">>>>>>>>>> GAME::set_player_position_teleport_in::first_unlocked_from_bottom[" << first_unlocked_from_bottom << "]" << std::endl;
-
-    player1.set_position(st_position(initial_pos_x, (first_unlocked_from_bottom+1)*TILESIZE-player1.get_size().height));
-    player1.char_update_real_position();
-    player1.set_animation_type(ANIM_TYPE_TELEPORT);
-    player1.set_animation_frame(0);
-
-    //std::cout << ">>>>>>>>>> GAME::set_player_position_teleport_in::DONE" << std::endl;
-}
-
-void game::show_player_teleport(int pos_x, int pos_y)
-{
-    //std::cout << "GAME::show_player_telport #2" << std::endl;
-
-    // find ground for player
-    set_player_position_teleport_in(pos_x, pos_y);
-    long end_time = timer.getTimer() + 1500;
-
-    //std::cout << "GAME::show_player_telport #2" << std::endl;
-
-    while (timer.getTimer() < end_time) {
-        loaded_stage.show_stage();
-        loaded_stage.showAbove();
-        if (player1.animation_has_restarted()) {
-            player1.set_animation_frame(1);
-            player1.set_animation_has_restarted(false);
-        }
-        player1.show();
+        input.clean_all();
+        showGame(false, false);
         draw_lib.update_screen();
         timer.delay(20);
     }
 
-    //std::cout << "GAME::show_player_telport #3" << std::endl;
-    player1.set_animation_frame(2);
-    player1.show();
-    draw_lib.update_screen();
-    timer.delay(20);
-    //std::cout << "GAME::show_player_telport #4" << std::endl;
-
-    show_ready();
-    //std::cout << "GAME::show_player_telport #5" << std::endl;
-    // force stand to avoid gravity not doing it for any reason
-    player1.set_animation_type(ANIM_TYPE_STAND);
-    loaded_stage.show_stage();
-    loaded_stage.showAbove();
-    player1.show();
-    draw_lib.update_screen();
-    timer.delay(20);
-
+	/// @TODO: do not show twice
+    //if (GAME_FLAGS[FLAG_QUICKLOAD] == false) {
+		if (game_save.stages[currentStage] == 0) {
+            game_dialogs.show_stage_dialog(currentStage);
+            // reset timers for objects
+            loaded_stage.reset_objects_timers();
+		}
+    //}
 }
 
 void game::show_ready()
@@ -373,37 +294,43 @@ void game::restart_stage()
     player1.clean_projectiles();
     player1.set_animation_type(ANIM_TYPE_TELEPORT);
 
+    int min_y = checkpoint.y;
+    if (checkpoint.y == -1) { // did not reached any checkpoint, use the calculated value from stage start
+        // find teleport stop point
+        min_y = loaded_stage.get_teleport_minimal_y_tile(85);
+    }
+    // to avoid errors, set as 1/3 of the screen
+    if (min_y >= MAP_H) {
+        min_y = MAP_H/2;
+    }
+    player1.set_teleport_minimal_y(min_y*TILESIZE);
+
+
     player1.reset_hp();
-    player1.reset_jump();
-    player1.cancel_slide();
     loaded_stage.reset_stage_maps();
+
+    player1.set_position(st_position(checkpoint.x, -TILESIZE));
+    player1.char_update_real_position();
+    std::cout << ">>>>>>>>>>>>> min_y: " << min_y << ", p.x: " << (int)player1.getPosition().x << std::endl;
 
     game_unpause();
 
-    loaded_stage.show_stage();
+    loaded_stage.showStage();
     loaded_stage.showAbove();
 	graphLib.set_screen_adjust(st_position(0, 0));
     draw_lib.update_screen();
-    // if was on stage-boss, mneeds to reload music
-    if (soundManager.get_is_playing_boss_music() == true) {
-        soundManager.load_stage_music(stage_data.bgmusic_filename);
-    }
     soundManager.restart_music();
-    if (checkpoint.y == -1) { // did not reached any checkpoint, use the calculated value from stage start
-        // find teleport stop point
-        show_player_teleport(PLAYER_INITIAL_X_POS, -1);
-    } else {
-        show_player_teleport(checkpoint.x, checkpoint.y);
-    }
+    player1.set_animation_type(ANIM_TYPE_TELEPORT);
+    show_ready();
 
     while (player1.get_anim_type() == ANIM_TYPE_TELEPORT) {
         input.clean_all();
-        show_game(true, false);
+        showGame(true, false);
         draw_lib.update_screen();
     }
     for (int i=0; i<AUTOSCROLL_START_DELAY_FRAMES; i++) { // extra delay to teleport without moving screen
         input.clean_all();
-        show_game(false, false);
+        showGame(false, false);
         draw_lib.update_screen();
         timer.delay(20);
     }
@@ -415,9 +342,8 @@ void game::restart_stage()
 // ********************************************************************************************** //
 //                                                                                                //
 // ********************************************************************************************** //
-bool game::show_game_intro()
+bool game::showIntro()
 {
-
 
     show_notice();
 
@@ -437,18 +363,21 @@ bool game::show_game_intro()
 
 
 
-    currentStage = INTRO_STAGE;
+	currentStage = 0;
 
 	initGame();
 
-    if (game_save.stages[INTRO_STAGE] == 0 && !GAME_FLAGS[FLAG_ALLWEAPONS]) {
-        input.clean();
+	if (game_save.stages[INTRO_STAGE] == 0) {
+		input.clean();
 		start_stage();
 	} else {
         currentStage = scenes.pick_stage(INTRO_STAGE);
         loaded_stage = stage(currentStage, &player1);
         // show boss intro with stars, if needed
         soundManager.stop_music();
+        if (game_save.stages[currentStage] == 0 || currentStage >= CASTLE1_STAGE1) {
+            scenes.boss_intro(currentStage);
+        }
 		start_stage();
 	}
 
@@ -463,17 +392,17 @@ void game::show_beta_version_warning()
     timer.delay(100);
 
     graphLib.draw_centered_text(30, "-- BETA VERSION WARNING --", graphLib.gameScreen, st_color(255, 130, 0));
-    graphLib.draw_centered_text(60, "THIS IS A TEST VERSION OF ROCKBOT,");
-    graphLib.draw_centered_text(75, "IT DOES CONTAIN ERRORS AND IS NOT");
-    graphLib.draw_centered_text(90, "COMPLETE MISSING SOME FEATURES.");
+    graphLib.draw_centered_text(60, "THIS IS A TEST VERSION OF ROCKBOT,", graphLib.gameScreen, st_color(255, 255, 255));
+    graphLib.draw_centered_text(75, "IT DOES CONTAIN ERRORS AND IS NOT", graphLib.gameScreen, st_color(255, 255, 255));
+    graphLib.draw_centered_text(90, "COMPLETE MISSING SOME FEATURES.", graphLib.gameScreen, st_color(255, 255, 255));
 
-    graphLib.draw_centered_text(120, "SOFTWARE IS PROVIDED \"AS IS\"");
-    graphLib.draw_centered_text(135, "WITHOUT WARRANTY OF ANY KIND,");
-    graphLib.draw_centered_text(150, "EXPRESS OR IMPLIED FROM AUTHOR.");
+    graphLib.draw_centered_text(120, "SOFTWARE IS PROVIDED \"AS IS\"", graphLib.gameScreen, st_color(255, 255, 255));
+    graphLib.draw_centered_text(135, "WITHOUT WARRANTY OF ANY KIND,", graphLib.gameScreen, st_color(255, 255, 255));
+    graphLib.draw_centered_text(150, "EXPRESS OR IMPLIED FROM AUTHOR.", graphLib.gameScreen, st_color(255, 255, 255));
 
-    graphLib.draw_centered_text(170, "REPORT ANY FOUND ISSUES TO");
-    graphLib.draw_centered_text(185, "bugs@upperland.net");
-    graphLib.draw_centered_text(210, "PRESS A BUTTON OR KEY TO CONTINUE.");
+    graphLib.draw_centered_text(170, "REPORT ANY FOUND ISSUES TO", graphLib.gameScreen, st_color(255, 255, 255));
+    graphLib.draw_centered_text(185, "protoman@upperland.net", graphLib.gameScreen, st_color(255, 255, 255));
+    graphLib.draw_centered_text(210, "PRESS A BUTTON OR KEY TO CONTINUE.", graphLib.gameScreen, st_color(255, 255, 255));
     draw_lib.update_screen();
     input.wait_keypress();
 }
@@ -485,20 +414,17 @@ void game::show_free_version_warning()
     input.clean();
     timer.delay(100);
 
-    graphLib.draw_centered_text(10, strings_map::get_instance()->get_ingame_string(string_intro_demo_warning_title, game_config.selected_language), graphLib.gameScreen, st_color(255, 130, 0));
-    graphLib.draw_centered_text(30, strings_map::get_instance()->get_ingame_string(string_intro_demo_warning1, game_config.selected_language));
-    graphLib.draw_centered_text(45, strings_map::get_instance()->get_ingame_string(string_intro_demo_warning2, game_config.selected_language));
-    graphLib.draw_centered_text(60, strings_map::get_instance()->get_ingame_string(string_intro_demo_warning3, game_config.selected_language));
-    graphLib.draw_centered_text(75, strings_map::get_instance()->get_ingame_string(string_intro_demo_warning4, game_config.selected_language));
-    graphLib.draw_centered_text(90, strings_map::get_instance()->get_ingame_string(string_intro_demo_warning5, game_config.selected_language));
-    graphLib.draw_centered_text(105, strings_map::get_instance()->get_ingame_string(string_intro_demo_warning6, game_config.selected_language));
-    graphLib.draw_centered_text(130, strings_map::get_instance()->get_ingame_string(string_intro_demo_warning7, game_config.selected_language));
-    graphLib.draw_centered_text(145, strings_map::get_instance()->get_ingame_string(string_intro_demo_warning8, game_config.selected_language));
-    graphLib.draw_centered_text(160, strings_map::get_instance()->get_ingame_string(string_intro_demo_warning9, game_config.selected_language));
-    graphLib.draw_centered_text(175, strings_map::get_instance()->get_ingame_string(string_intro_demo_warning10, game_config.selected_language));
+    graphLib.draw_centered_text(30, "-- FREE VERSION WARNING --", graphLib.gameScreen, st_color(255, 130, 0));
+    graphLib.draw_centered_text(60, "THIS IS ROCKBOT 2'S FREE VERSION.", graphLib.gameScreen, st_color(255, 255, 255));
+    graphLib.draw_centered_text(75, "IT CONTAINS THREE STAGES", graphLib.gameScreen, st_color(255, 255, 255));
+    graphLib.draw_centered_text(90, "AND LACKS SUPPORT FOR", graphLib.gameScreen, st_color(255, 255, 255));
+    graphLib.draw_centered_text(105, "A FEW FEATURES.", graphLib.gameScreen, st_color(255, 255, 255));
 
-    graphLib.draw_centered_text(205, strings_map::get_instance()->get_ingame_string(string_intro_demo_warning11, game_config.selected_language));
-    graphLib.draw_centered_text(220, strings_map::get_instance()->get_ingame_string(string_press_key_or_button, game_config.selected_language));
+    graphLib.draw_centered_text(130, "FULL VERSION WILL BE RELEASED", graphLib.gameScreen, st_color(255, 255, 255));
+    graphLib.draw_centered_text(145, "LATER DURING THE YEAR 2017.", graphLib.gameScreen, st_color(255, 255, 255));
+
+    graphLib.draw_centered_text(185, "ENJOY!", graphLib.gameScreen, st_color(255, 255, 255));
+    graphLib.draw_centered_text(210, "PRESS A BUTTON OR KEY TO CONTINUE.", graphLib.gameScreen, st_color(255, 255, 255));
     draw_lib.update_screen();
     input.wait_keypress();
 }
@@ -511,62 +437,65 @@ void game::show_notice()
     graphicsLib_gSurface upperland_surface;
     graphLib.surfaceFromFile(GAMEPATH + "/shared/images/upperland.png", &upperland_surface);
 
+    graphicsLib_gSurface presents_surface;
+    graphLib.surfaceFromFile(GAMEPATH + "/shared/images/presents.png", &presents_surface);
+
     st_position logo_pos(RES_W/2 - (upperland_surface.width/6)/2, RES_H/2 - upperland_surface.height/2);
-
-
-    graphLib.draw_centered_text(logo_pos.y + upperland_surface.height + 7, strings_map::get_instance()->get_ingame_string(string_intro_upperland_studios, game_config.selected_language), graphLib.gameScreen, st_color(199, 215, 255));
-    graphLib.draw_centered_text(logo_pos.y + upperland_surface.height + 19, strings_map::get_instance()->get_ingame_string(string_intro_presents, game_config.selected_language), graphLib.gameScreen, st_color(199, 215, 255));
+    graphLib.copyArea(st_rectangle(0, 0, presents_surface.width, presents_surface.height), st_position(RES_W*0.5-presents_surface.width*0.5, logo_pos.y + upperland_surface.height + 7), &presents_surface, &graphLib.gameScreen);
 
 
     //std::cout << ">> logo_pos.x: " << logo_pos.x << ", logo_pos.y: " << logo_pos.y << std::endl;
     graphLib.copyArea(st_rectangle(0, 0, upperland_surface.width/6, upperland_surface.height), logo_pos, &upperland_surface, &graphLib.gameScreen);
-    graphLib.draw_centered_text(220, "HTTP://ROCKBOT.UPPERLAND.NET");
+    graphLib.draw_centered_text(220, "HTTP://ROCKBOT.UPPERLAND.NET", st_color(240, 240, 240));
     draw_lib.update_screen();
-    input.clean_and_wait_scape_time(400);
+    input.waitScapeTime(400);
     for (int i=1; i<6; i++) {
         graphLib.copyArea(st_rectangle((upperland_surface.width/6)*i, 0, upperland_surface.width/6, upperland_surface.height), logo_pos, &upperland_surface, &graphLib.gameScreen);
         draw_lib.update_screen();
-        input.wait_scape_time(30);
+        input.waitScapeTime(30);
     }
     graphLib.copyArea(st_rectangle(0, 0, upperland_surface.width/6, upperland_surface.height), logo_pos, &upperland_surface, &graphLib.gameScreen);
 
 
     draw_lib.update_screen();
 
-    input.clean_and_wait_scape_time(1200);
-
+    timer.delay(1200);
 
     graphLib.blank_screen();
 
-    graphLib.draw_centered_text(30, strings_map::get_instance()->get_ingame_string(string_intro_engine1, game_config.selected_language), graphLib.gameScreen, st_color(199, 215, 255));
-    graphLib.draw_centered_text(60, strings_map::get_instance()->get_ingame_string(string_intro_engine2, game_config.selected_language));
-    graphLib.draw_centered_text(80, strings_map::get_instance()->get_ingame_string(string_intro_engine3, game_config.selected_language));
-    graphLib.draw_centered_text(100, strings_map::get_instance()->get_ingame_string(string_intro_engine4, game_config.selected_language));
-    graphLib.draw_centered_text(120, strings_map::get_instance()->get_ingame_string(string_intro_engine5, game_config.selected_language));
-    graphLib.draw_centered_text(140, strings_map::get_instance()->get_ingame_string(string_intro_engine6, game_config.selected_language));
-    graphLib.draw_centered_text(180, strings_map::get_instance()->get_ingame_string(string_intro_engine7, game_config.selected_language));
-    graphLib.draw_centered_text(200, strings_map::get_instance()->get_ingame_string(string_intro_engine8, game_config.selected_language));
+    graphLib.draw_centered_text(30, "ROCKBOT ENGINE", graphLib.gameScreen, st_color(199, 215, 255));
+    graphLib.draw_centered_text(60, "THIS GAME RUNS WITH", graphLib.gameScreen, st_color(255, 255, 255));
+    graphLib.draw_centered_text(80, "UPPERLAND'S ROCKBOT ENGINE.", graphLib.gameScreen, st_color(255, 255, 255));
+    graphLib.draw_centered_text(120, "GAME'S SOURCE-CODE IS LICENSED UNDER", graphLib.gameScreen, st_color(255, 255, 255));
+    graphLib.draw_centered_text(132, "THE GPL AND IS FREELY DISTRIBUTABLE.", graphLib.gameScreen, st_color(255, 255, 255));
+    graphLib.draw_centered_text(144, "GAME CONTENT IS UNDER DIFFERENT", graphLib.gameScreen, st_color(255, 255, 255));
+    graphLib.draw_centered_text(156, "LICENCES BY ITS RESPECTIVE CREATORS", graphLib.gameScreen, st_color(255, 255, 255));
+    graphLib.draw_centered_text(268, "AND USED WITH AUTHORIZATION.", graphLib.gameScreen, st_color(255, 255, 255));
 
     draw_lib.update_screen();
 
-    input.clean_and_wait_scape_time(4000);
+    timer.delay(3000);
 
 }
 
-void game::show_in_memorian()
+// ********************************************************************************************** //
+//                                                                                                //
+// ********************************************************************************************** //
+void game::fps_count()
 {
-    graphLib.blank_screen();
-    draw_lib.update_screen();
-
-    graphLib.draw_centered_text(60, "IN MEMORIAN TO MY OLD BROTHER");
-    graphLib.draw_centered_text(100, "IVAN FIEDORUK");
-    graphLib.draw_centered_text(120, "AUGUST, 27, 1973 - MAY, 16, 2018");
-    graphLib.draw_centered_text(160, "CREATOR OF APEBOT");
-    graphLib.draw_centered_text(180, "REST IN PEACE");
-    draw_lib.fade_in_screen(0, 0, 0, 2000);
-    draw_lib.update_screen();
-    timer.delay(4000);
-    draw_lib.fade_out_screen(0, 0, 0, 2000);
+    if (timer.is_paused()) {
+        return;
+    }
+    fps_counter++;
+	if (fps_timer <= timer.getTimer()) {
+        sprintf(_fps_buffer, "FPS: %d", fps_counter);
+		fps_counter = 0;
+		fps_timer = timer.getTimer()+1000;
+	}
+    if (fps_counter > 1) {
+        std::string temp_str(_fps_buffer);
+        graphLib.draw_text(12, 2, temp_str);
+    }
 }
 
 
@@ -653,7 +582,6 @@ bool game::test_teleport(classPlayer *test_player) {
     //std::cout << "START TELEPORT!!!!" << std::endl;
     game_pause();
 
-    graphLib.set_screen_adjust(st_position(0, 0));
     remove_all_projectiles();
     reset_beam_objects(); // beam/ray objects must be reset when changing maps
 
@@ -677,7 +605,11 @@ bool game::test_teleport(classPlayer *test_player) {
 
 
     if (is_link_teleporter(stage_data.links[j].type) == true) {
-        draw_lib.fade_out_screen(0, 0, 0, 300);
+        if (link_type == LINK_FADE_TELEPORT) {
+            draw_lib.fade_out_screen(0, 0, 0, 300);
+        } else {
+            test_player->teleport_out();
+        }
         graphLib.blank_screen();
         draw_lib.update_screen();
         timer.delay(500);
@@ -696,10 +628,8 @@ bool game::test_teleport(classPlayer *test_player) {
     } else {
         transition_screen(transition_type, temp_map_n, new_map_pos_x, test_player);
     }
-    remove_temp_objects();
 
     st_float_position bg1_pos = loaded_stage.get_current_map()->get_bg_scroll();
-
 
     set_current_map(temp_map_n);
 
@@ -717,12 +647,11 @@ bool game::test_teleport(classPlayer *test_player) {
             test_player->set_position(st_position(stage_data.links[j].pos_destiny.x*TILESIZE, stage_data.links[j].pos_destiny.y*TILESIZE));
             test_player->char_update_real_position();
             test_player->set_animation_type(ANIM_TYPE_JUMP);
-            show_game(false, true);
+            showGame(false, true);
             timer.delay(50);
-            draw_lib.fade_in_screen(0, 0, 0, 1000);
+            draw_lib.fade_in_screen(0, 0, 0);
         } else {
-            test_player->set_position(st_position(stage_data.links[j].pos_destiny.x*TILESIZE,  stage_data.links[j].pos_destiny.y*TILESIZE));
-            test_player->set_animation_type(ANIM_TYPE_JUMP);
+            test_player->set_position(st_position(stage_data.links[j].pos_destiny.x*TILESIZE, 0));
             test_player->char_update_real_position();
         }
     } else {
@@ -799,6 +728,7 @@ bool game::check_player_is_on_teleport(classPlayer *test_player, int currentMap,
             }
             link_type = stage_data.links[link_n].type;
             //std::cout << "## TELEPORT #1, teleporter_dist[" << teleporter_dist << "]" << std::endl;
+            set_player_teleporter(teleport_count, st_position(player1.getPosition().x, player1.getPosition().y), false);
             return true;
         }
     // only clean teleport when player is out of the teleporter
@@ -832,7 +762,7 @@ Uint8 game::get_current_map()
 }
 
 
-void game::map_present_boss(bool show_dialog, bool is_static_boss)
+void game::map_present_boss(bool show_dialog)
 {
 	is_showing_boss_intro = true;
 
@@ -843,10 +773,11 @@ void game::map_present_boss(bool show_dialog, bool is_static_boss)
     player1.clear_move_commands();
 	bool loop_run = true;
 	while (loop_run == true) {
-        loaded_stage.show_stage();
+        loaded_stage.showStage();
         player1.charMove();
+        bool hit_ground = player1.hit_ground();
         int anim_type = player1.get_anim_type();
-        if (player1.hit_ground() == true && anim_type == ANIM_TYPE_STAND) {
+        if (hit_ground == true && anim_type == ANIM_TYPE_STAND) {
 			loop_run = false;
 		}
         player1.show();
@@ -859,35 +790,26 @@ void game::map_present_boss(bool show_dialog, bool is_static_boss)
 	graphLib.blink_screen(255, 255, 255);
 
 	// 3. move boss from top to ground
-    classnpc* boss_ref = loaded_stage.get_near_boss();
-    if (boss_ref != NULL) {
-        if (is_static_boss == false) {
-            loop_run = true;
-            while (loop_run == true) {
-                if (loaded_stage.boss_hit_ground(boss_ref) == true) {
-                    loop_run = false;
-                    show_stage(0, false);
-                } else {
-                    show_stage(0, true);
-                }
-            }
-        } else {
-            // TODO //
-        }
-    }
-    show_stage(8, false);
+	loop_run = true;
+	while (loop_run == true) {
+        if (loaded_stage.boss_hit_ground() == true) {
+			loop_run = false;
+		}
+        show_stage(0, true);
+	}
+	show_stage(8, true);
 
 
 	if (show_dialog == true) {
 		// 4. show boss dialog
         dialogs boss_dialog;
-        if (!game_save.stages[loaded_stage.get_number()]) {
-            boss_dialog.show_boss_dialog(loaded_stage.get_number());
-        }
+        boss_dialog.show_boss_dialog(loaded_stage.get_number());
 	}
 
-    show_stage(8, false);
+	show_stage(8, false);
 
+
+	fill_boss_hp_bar();
 
     soundManager.play_boss_music();
 
@@ -917,6 +839,29 @@ bool game::must_show_boss_hp()
 	return _show_boss_hp;
 }
 
+void game::fill_boss_hp_bar()
+{
+    soundManager.play_timed_sfx(SFX_GOT_ENERGY, 60*BOSS_INITIAL_HP+100);
+    for (int i=0; i<BOSS_INITIAL_HP; i++) {
+        graphLib.draw_hp_bar(i, -1, -1, BOSS_INITIAL_HP);
+        draw_lib.update_screen();
+		timer.delay(60);
+	}
+    timer.delay(200);
+}
+
+void game::fill_player_weapon(short weapon_n)
+{
+    soundManager.play_timed_sfx(SFX_GOT_ENERGY, 60*PLAYER_INITIAL_HP+100);
+    for (int i=0; i<PLAYER_INITIAL_HP; i++) {
+        graphLib.draw_hp_bar(i, player1.get_number(), weapon_n, fio.get_heart_pieces_number(game_save));
+        draw_lib.update_screen();
+        timer.delay(60);
+    }
+    timer.delay(200);
+}
+
+
 
 void game::reset_stage_maps()
 {
@@ -941,11 +886,6 @@ void game::reset_beam_objects()
     loaded_stage.get_current_map()->reset_beam_objects();
 }
 
-void game::remove_temp_objects()
-{
-    loaded_stage.get_current_map()->remove_temp_objects();
-}
-
 void game::remove_players_slide()
 {
     player1.cancel_slide();
@@ -960,7 +900,6 @@ void game::transition_screen(Uint8 type, Uint8 map_n, short int adjust_x, classP
 
     classMap* temp_map = &loaded_stage.maps[map_n];
     temp_map->set_bg_scroll(loaded_stage.get_current_map()->get_bg_scroll());
-    temp_map->set_foreground_postion(loaded_stage.get_current_map()->get_foreground_postion());
 
     graphLib.copyArea(st_rectangle(0, i*TRANSITION_STEP, RES_W, RES_H), st_position(0, 0), &temp_screen, &graphLib.gameScreen);
 
@@ -977,7 +916,7 @@ void game::transition_screen(Uint8 type, Uint8 map_n, short int adjust_x, classP
 
     // draw map in the screen, erasing all players/objects/npcs/GFX
     draw_lib.set_gfx(SCREEN_GFX_NONE, BG_SCROLL_MODE_NONE);
-    loaded_stage.show_stage();
+    loaded_stage.showStage();
 
 
     // draw the offscreen with the new loaded map
@@ -1027,36 +966,23 @@ void game::transition_screen(Uint8 type, Uint8 map_n, short int adjust_x, classP
 					pObj->set_position(st_position(pObj->getPosition().x, pObj->getPosition().y + TRANSITION_STEP - extra_y));
 				}
 			}
-
-
-            int temp_map_3rdlevel_pos = (RES_H+TILESIZE*0.5) - i*TRANSITION_STEP - 8;
-            if (type == TRANSITION_TOP_TO_BOTTOM) {
-                loaded_stage.get_current_map()->show_objects(-i*TRANSITION_STEP);
-                temp_map->show_objects(temp_map_3rdlevel_pos, adjust_x);
-            } else {
-                temp_map_3rdlevel_pos = -(RES_H+TILESIZE*0.5) + i*TRANSITION_STEP + 8; // 8 is a adjust for some error I don't know the reason
-                loaded_stage.get_current_map()->show_objects(i*TRANSITION_STEP);
-                temp_map->show_objects(temp_map_3rdlevel_pos, adjust_x);
-            }
-
 			pObj->char_update_real_position();
 			pObj->show();
 
 
 			if (type == TRANSITION_TOP_TO_BOTTOM) {
-                loaded_stage.showAbove(-i*TRANSITION_STEP, false);
-                loaded_stage.get_current_map()->show_above_objects(-i*TRANSITION_STEP);
-                temp_map->show_above_objects(temp_map_3rdlevel_pos, adjust_x);
+                loaded_stage.showAbove(-i*TRANSITION_STEP);
+                loaded_stage.get_current_map()->show_objects(-i*TRANSITION_STEP);
+                int temp_map_3rdlevel_pos = (RES_H+TILESIZE*0.5) - i*TRANSITION_STEP - 8;
+                temp_map->show_objects(temp_map_3rdlevel_pos, adjust_x);
                 temp_map->showAbove(temp_map_3rdlevel_pos, adjust_x);
 			} else {
-                loaded_stage.showAbove(i*TRANSITION_STEP, false);
-                loaded_stage.get_current_map()->show_above_objects(i*TRANSITION_STEP);
-                temp_map->show_above_objects(temp_map_3rdlevel_pos, adjust_x);
+                loaded_stage.showAbove(i*TRANSITION_STEP);
+                loaded_stage.get_current_map()->show_objects(i*TRANSITION_STEP);
+                int temp_map_3rdlevel_pos = -(RES_H+TILESIZE*0.5) + i*TRANSITION_STEP + 8; // 8 is a adjust for some error I don't know the reason
+                temp_map->show_objects(temp_map_3rdlevel_pos, adjust_x);
                 temp_map->showAbove(temp_map_3rdlevel_pos, adjust_x);
 			}
-
-            // draw HUD
-            draw_lib.show_hud(player1.get_current_hp(), 1, player1.get_selected_weapon(), player1.get_selected_weapon_value());
 
 
             draw_lib.update_screen();
@@ -1078,11 +1004,7 @@ void game::transition_screen(Uint8 type, Uint8 map_n, short int adjust_x, classP
                 pObj->set_position(st_position(pObj->getPosition().x, pObj->getPosition().y + TRANSITION_STEP));
             }
         }
-    }
-
-    // when transition finished, spawned npcs and objects such as jet/coild, must be removed
-    //temp_map->remove_temp_objects();
-
+	}
 
     temp_screen.freeGraphic();
 	pObj->set_teleporter(-1);
@@ -1090,14 +1012,14 @@ void game::transition_screen(Uint8 type, Uint8 map_n, short int adjust_x, classP
 }
 
 
-void game::horizontal_screen_move(short direction, bool is_door, short tileX)
+void game::horizontal_screen_move(short direction, bool is_door, short tileX, short tileY)
 {
+    int i = 0;
+    int upTile = 0;
+    int downTile = 0;
+
+    classMap* temp_map = loaded_stage.get_current_map();
     st_float_position scroll_move;
-
-    game_pause();
-
-    graphLib.set_screen_adjust(st_position(0, 0));
-
 	if (direction == ANIM_DIRECTION_LEFT) {
         scroll_move.x = -TRANSITION_STEP;
 	} else {
@@ -1109,12 +1031,31 @@ void game::horizontal_screen_move(short direction, bool is_door, short tileX)
         // if there is a subboss alive, near left, you can't open
         if (subboss_alive_on_left(tileX) == true) {
             std::cout << "[ERROR]: Oh no! Door can't be open because there is an alive sub-boss on its left side." << std::endl;
-            game_unpause();
             return;
         }
-        loaded_stage.show_stage();
+
+        loaded_stage.showStage();
+		upTile = tileY;
+		for (i=tileY; i>=0; i--) {
+			if (temp_map->getMapPointLock(st_position(tileX, i)) == TERRAIN_DOOR) {
+				upTile = i;
+			} else {
+				break;
+			}
+		}
+		downTile = tileY;
+		for (i=tileY; i<MAP_H; i++) {
+			if (temp_map->getMapPointLock(st_position(tileX, i)) == TERRAIN_DOOR) {
+				downTile = i;
+			} else {
+				break;
+			}
+		}
+        soundManager.play_sfx(SFX_DOOR_OPEN);
+        loaded_stage.redraw_boss_door(false, (downTile-upTile+1), tileX, tileY, player1.get_number());//bool is_close, int nTiles, int tileX
 	}
 
+    game_pause();
 
 
     int move_limit = (RES_W/abs((float)scroll_move.x)) - TILESIZE/abs((float)scroll_move.x);
@@ -1122,25 +1063,16 @@ void game::horizontal_screen_move(short direction, bool is_door, short tileX)
     if (scroll_move.x < 0) {
         player_move_x = player_move_x * -1;
     }
-    int static_scroll_x = loaded_stage.getMapScrolling().x;
-
-
-    std::cout << "player_move_x[" << player_move_x << "], move_limit[" << move_limit << "]" << std::endl;
+    std::cout << "player_move_x[" << player_move_x << "]" << std::endl;
     for (int i=0; i<move_limit; i++) {
         //loaded_stage.changeScrolling(scroll_move, false);
         loaded_stage.change_map_scroll(scroll_move, false, true);
-        loaded_stage.show_stage();
-        if (loaded_stage.must_show_static_bg() == false) {
-            loaded_stage.show_npcs();
-        } else {
-            loaded_stage.show_npcs_to_left(static_scroll_x+RES_W);
-        }
+        loaded_stage.showStage();
+        loaded_stage.show_npcs();
         player1.show();
         loaded_stage.showAbove();
-        // draw HUD
-        draw_lib.show_hud(player1.get_current_hp(), 1, player1.get_selected_weapon(), player1.get_selected_weapon_value());
 #if defined(PC)
-        timer.delay(2);
+        timer.delay(1);
 #endif
         draw_lib.update_screen();
 
@@ -1153,35 +1085,13 @@ void game::horizontal_screen_move(short direction, bool is_door, short tileX)
         */
 	}
     if (is_door == true) {
+        soundManager.play_sfx(SFX_DOOR_OPEN);
+        loaded_stage.redraw_boss_door(true, (downTile-upTile+1), tileX, tileY, player1.get_number());
         remove_players_slide();
     }
     timer.delay(6);
     game_unpause();
-    loaded_stage.add_autoscroll_delay();
-    loaded_stage.show_stage();
-}
-
-void game::show_door_animation()
-{
-    int steps = 50;
-    remove_players_slide();
-
-    for (int i=0; i<steps; i++) {
-        loaded_stage.show_stage();
-        loaded_stage.show_npcs();
-        loaded_stage.show_objects();
-        player1.show();
-        loaded_stage.showAbove();
-        // draw HUD
-        draw_lib.show_hud(player1.get_current_hp(), 1, player1.get_selected_weapon(), player1.get_selected_weapon_value());
-#if defined(PC)
-        timer.delay(2);
-#endif
-        draw_lib.update_screen();
-    }
-    timer.delay(6);
-    game_unpause();
-    loaded_stage.show_stage();
+    loaded_stage.showStage();
 }
 
 
@@ -1197,6 +1107,7 @@ void game::got_weapon()
     invencible_old_value = GAME_FLAGS[FLAG_INVENCIBLE]; // store old value in order to not set the flag to false if it is on my command-line parameter
     GAME_FLAGS[FLAG_INVENCIBLE] = true;
 
+
     // remove any projectiles, charged shots, slides, etc
     player1.clean_projectiles();
     player1.clear_move_commands();
@@ -1208,44 +1119,44 @@ void game::got_weapon()
 
 		/// @TODO: teletransport if capsules
 
-        soundManager.stop_music();
 		// fall to ground
-        soundManager.play_sfx(SFX_BIG_EXPLOSION);
         player1.fall();
-        player1.set_animation_type(ANIM_TYPE_GOT_WEAPON);
 
-        std::vector<st_color> color_list;
-        color_list.push_back(st_color(251, 225, 101));
-        color_list.push_back(st_color(101, 105, 251));
-        color_list.push_back(st_color(112, 251, 101));
-        color_list.push_back(st_color(251, 101, 101));
-        soundManager.load_music(game_data.got_weapon_music_filename);
-        soundManager.play_music();
 
-        for (int i=0; i<2; i++) {
-            for (int j=0; j<color_list.size(); j++) {
-                graphLib.clear_area(0, 0, RES_W, RES_H, color_list.at(j).r, color_list.at(j).g, color_list.at(j).b);
-                player1.show();
-                draw_lib.update_screen();
-                timer.delay(300);
-            }
-        }
-        long end_timer = timer.getTimer() + 3500;
-        while (timer.getTimer() < end_timer) {
-            loaded_stage.show_stage();
-            player1.show();
-            loaded_stage.showAbove();
-            draw_lib.update_screen();
-            timer.delay(250);
-        }
+		/// @TODO: walk to boss room middle, if inside a boss room (must create a way to check this), otherwise, just jump up
+        walk_character_to_screen_point_x(&player1, RES_W/2);
+
+		// jump up, implosion, jump down and teleport out of the screen
+        player1.execute_jump_up();
+        draw_implosion(player1.get_real_position().x+player1.get_size().width/2-6, player1.get_real_position().y+player1.get_size().height/2-4);
+        player1.show();
+        draw_lib.update_screen();
+
+        player1.set_weapon(currentStage, false);
+        fill_player_weapon(player1.get_selected_weapon());
+        player1.fall();
+		soundManager.play_sfx(SFX_GOT_WEAPON);
+        timer.delay(5000);
+
+        // fall to ground
+        player1.fall();
+        timer.delay(500);
+
+
+		soundManager.play_sfx(SFX_TELEPORT);
+        player1.teleport_out();
+        timer.delay(1000);
 
 		/// @TODO
 		// show the "you got" screen
 		graphLib.blank_screen();
+        soundManager.load_music(game_data.got_weapon_music_filename);
 		graphLib.blink_screen(255, 255, 255);
 		graphLib.blank_screen();
-
-        graphLib.show_config_bg();
+        soundManager.play_music();
+		graphicsLib_gSurface temp_bg;
+        graphLib.surfaceFromFile(FILEPATH+"images/backgrounds/stage_boss_intro.png", &temp_bg);
+		graphLib.showSurface(&temp_bg);
 
         player1.set_position(st_position(20, (RES_H * 0.5 - player1.get_size().height/2)));
         player1.set_animation_type(ANIM_TYPE_ATTACK);
@@ -1253,36 +1164,32 @@ void game::got_weapon()
         player1.char_update_real_position();
         player1.show();
 
+        graphLib.start_stars_animation();
+
         std::string weapon_name(game_data.weapons[currentStage].name);
 		for (std::string::iterator p = weapon_name.begin(); weapon_name.end() != p; ++p) {
 			*p = toupper(*p);
 		}
 
+		std::string phrase = std::string("YOU GOT ") + weapon_name;
 
-        // line 1, weapon name; line 2 extra item; line 3 was acquired
+		graphLib.draw_progressive_text((RES_W * 0.5 - 90), (RES_H * 0.5 - 4), phrase, false);
 		std::string extra_name = "";
         if (currentStage == COIL_GOT_STAGE) {
             std::string item_name = strings_map::get_instance()->toupper(std::string(GameMediator::get_instance()->object_list.at(game_data.player_items[0]).name));
-            extra_name = strings_map::get_instance()->get_ingame_string(strings_ingame_and, game_config.selected_language) + std::string(" ") + item_name;
+            extra_name = strings_map::get_instance()->get_ingame_string(strings_ingame_and) + std::string(" ") + item_name;
         } else if (currentStage == JET_GOT_STAGE) {
             std::string item_name = strings_map::get_instance()->toupper(std::string(GameMediator::get_instance()->object_list.at(game_data.player_items[1]).name));
-            extra_name = strings_map::get_instance()->get_ingame_string(strings_ingame_and, game_config.selected_language) + std::string(" ") + item_name;
+            extra_name = strings_map::get_instance()->get_ingame_string(strings_ingame_and) + std::string(" ") + item_name;
         }
-        std::string phrase = std::string(strings_map::get_instance()->get_ingame_string(strings_ingame_yougot_singular, game_config.selected_language) + " ");
-        graphLib.draw_progressive_text((RES_W * 0.5 - 90), (RES_H * 0.5 - 4), weapon_name, false);
-        short line3_pos = RES_H * 0.5 + 8;
-        if (extra_name.length() > 0) {
-            graphLib.draw_progressive_text((RES_W * 0.5 - 90), (RES_H * 0.5 + 8), extra_name, false);
-            line3_pos = RES_H * 0.5 + 20;
-            phrase = std::string(strings_map::get_instance()->get_ingame_string(strings_ingame_yougot_plural, game_config.selected_language) + " ");
-        }
-        graphLib.draw_progressive_text((RES_W * 0.5 - 90), line3_pos, phrase, false);
-
-
+		graphLib.draw_progressive_text((RES_W * 0.5 - 90), (RES_H * 0.5 + 8), extra_name, false);
 
         player1.show();
 
         graphLib.wait_and_update_screen(5000);
+        graphLib.stop_stars_animation();
+    } else {
+        player1.teleport_out();
 	}
 
     game_save.stages[currentStage] = 1;
@@ -1297,7 +1204,10 @@ void game::got_weapon()
 
 void game::leave_stage()
 {
-    save_game();
+    if (fio.write_save(game_save) == false) {
+        show_savegame_error();
+    }
+
     draw_lib.set_flash_enabled(false);
     freeze_weapon_effect = FREEZE_EFFECT_NONE;
     GAME_FLAGS[FLAG_INVENCIBLE] = invencible_old_value;
@@ -1308,56 +1218,17 @@ void game::leave_stage()
     // return to stage selection
     player1.reset_charging_shot();
     player1.set_weapon(WEAPON_DEFAULT, false);
-    // @TODO: last stage must be set by game_data.final_boss_id //
-    if (currentStage >= CASTLE1_STAGE1 && currentStage < CASTLE1_STAGE5) {
-        currentStage = scenes.pick_stage(currentStage+1);
-    } else {
-        currentStage = scenes.pick_stage(currentStage);
-    }
+    currentStage = scenes.pick_stage(currentStage);
     loaded_stage = stage(currentStage, &player1);
     // show boss intro with stars, if needed
     soundManager.stop_music();
+    if (game_save.stages[currentStage] == 0) {
+        scenes.boss_intro(currentStage);
+    }
     checkpoint.map = 0;
     checkpoint.map_scroll_x = 0;
     checkpoint.reset();
     start_stage();
-}
-
-void game::return_to_intro_screen()
-{
-    save_game();
-
-    draw_lib.set_flash_enabled(false);
-    freeze_weapon_effect = FREEZE_EFFECT_NONE;
-    GAME_FLAGS[FLAG_INVENCIBLE] = invencible_old_value;
-
-    input.clean();
-    timer.delay(200);
-
-    // return to stage selection
-    player1.reset_charging_shot();
-    player1.set_weapon(WEAPON_DEFAULT, false);
-
-    scenes.main_screen();
-    currentStage = INTRO_STAGE;
-    leave_game = false;
-
-    if (game_save.stages[INTRO_STAGE] == 0 && !GAME_FLAGS[FLAG_ALLWEAPONS]) {
-        currentStage = INTRO_STAGE;
-        player1.initialize();
-        loaded_stage = stage(currentStage, &player1);
-        player1.initFrames();
-        player1.set_is_player(true);
-        player1.reset_hp();
-        input.clean();
-        start_stage();
-    } else {
-        currentStage = scenes.pick_stage(INTRO_STAGE);
-        loaded_stage = stage(currentStage, &player1);
-        // show boss intro with stars, if needed
-        soundManager.stop_music();
-        start_stage();
-    }
 }
 
 void game::game_pause()
@@ -1372,8 +1243,6 @@ void game::game_unpause()
     timer.unpause();
     input.read_input();
     player1.restore_input();
-    player1.reset_sprite_animation_timer();
-    loaded_stage.reset_stage_timers();
 }
 
 void game::exit_game()
@@ -1391,7 +1260,9 @@ void game::exit_game()
 #endif
 
 
-    save_game();
+    if (fio.write_save(game_save) == false) {
+        show_savegame_error();
+    }
 
     run_game = false;
 
@@ -1407,15 +1278,17 @@ void game::game_over()
     soundManager.play_music();
     graphLib.blank_screen();
 
-
-    graphLib.show_config_bg();
+    graphicsLib_gSurface config_bg;
+    std::string filename = FILEPATH + "images/backgrounds/config.png";
+    graphLib.surfaceFromFile(filename, &config_bg);
+    graphLib.copyArea(st_rectangle(0, 0, config_bg.get_surface()->w, config_bg.get_surface()->h), st_position(0, 0), &config_bg, &graphLib.gameScreen);
 
     graphicsLib_gSurface dialog_img;
-    std::string filename = FILEPATH + "images/backgrounds/dialog.png";
+    filename = FILEPATH + "images/backgrounds/dialog.png";
     graphLib.surfaceFromFile(filename, &dialog_img);
     graphLib.copyArea(st_rectangle(0, 0, dialog_img.get_surface()->w, dialog_img.get_surface()->h), st_position(RES_W/2-dialog_img.get_surface()->w/2, RES_H/2-dialog_img.get_surface()->h/2), &dialog_img, &graphLib.gameScreen);
 
-    graphLib.draw_centered_text(RES_H/2-6, strings_map::get_instance()->get_ingame_string(strings_ingame_gameover, game_config.selected_language));
+    graphLib.draw_centered_text(RES_H/2-6, strings_map::get_instance()->get_ingame_string(strings_ingame_gameover), graphLib.gameScreen, st_color(235, 235, 235));
 
     draw_lib.update_screen();
     timer.delay(400);
@@ -1440,14 +1313,13 @@ void game::show_ending()
     player1.set_weapon(0, false);
 
     scenes.show_player_ending();
-    scenes.show_player_walking_ending();
-
     scenes.show_enemies_ending();
 
     scenes.show_game_scene(GAME_SCENE_TYPES_ENDING_GAME_CREDITS);
     draw_lib.show_credits(false);
 
-    return_to_intro_screen();
+    /// @TODO add scene ending
+    leave_game = true;
 }
 
 void game::show_demo_ending()
@@ -1456,22 +1328,22 @@ void game::show_demo_ending()
     timer.delay(200);
     graphLib.clear_area(0, 0, RES_W, RES_H, 0, 0, 0);
     graphLib.draw_centered_text(10, "-THANKS FOR PLAYING-", st_color(255, 130, 0));
-    graphLib.draw_centered_text(30, "YOU FINISHED ROCKBOT'S FREE VERSION.");
-    graphLib.draw_centered_text(45, "THE COMPLETE GAME WILL BE AVAILABLE");
-    graphLib.draw_centered_text(60, "AS AN OPEN BETA VERSION FOR");
-    graphLib.draw_centered_text(60, "PURSHASE BY 2017'S ENDING.");
-    graphLib.draw_centered_text(RES_H-40, "PRESENTED BY UPPERLAND STUDIOS.");
-    graphLib.draw_centered_text(RES_H-20, "PRESS A BUTTON TO CONTINUE PLAYING.");
+    graphLib.draw_centered_text(30, "YOU FINISHED ROCKBOT'S FREE VERSION.", st_color(240, 240, 240));
+    graphLib.draw_centered_text(45, "THE COMPLETE GAME WILL BE AVAILABLE", st_color(240, 240, 240));
+    graphLib.draw_centered_text(60, "FOR PURSHASE LATER DURING IN 2017.", st_color(240, 240, 240));
+    graphLib.draw_centered_text(RES_H-40, "PRESENTED BY UPPERLAND.", st_color(240, 240, 240));
+    graphLib.draw_centered_text(RES_H-20, "PRESS A BUTTON TO CONTINUE PLAYING.", st_color(240, 240, 240));
     draw_lib.update_screen();
     input.wait_keypress();
 }
 
 void game::quick_load_game()
 {
-    if (fio.save_exists(current_save_slot)) {
-        fio.read_save(game_save, current_save_slot);
+    if (fio.save_exists()) {
+        fio.read_save(game_save);
     }
 
+    currentStage = INTRO_STAGE;
     game_save.difficulty = DIFFICULTY_HARD;
     game_save.selected_player = PLAYER_1;
 
@@ -1493,32 +1365,18 @@ void game::quick_load_game()
     }
 
 
-    //scenes.preloadScenes();
-
-    // TEST //
-    //GAME_FLAGS[FLAG_ALLWEAPONS] = true;
-    //currentStage = scenes.pick_stage(INTRO_STAGE);
-    currentStage = STAGE1;
-
+    scenes.preloadScenes();
 
     // DEBUG //
     std::cout << "############### currentStage[" << (int)currentStage << "]" << std::endl;
 
     initGame();
 
-    // DEBUG //
-    //show_ending();
+    // TEST //
+    scenes.pick_stage(0);
 
-    //game_save.armor_pieces[ARMOR_TYPE_LEGS] = true;
-
+    scenes.boss_intro(currentStage);
     start_stage();
-
-    //got_weapon();
-}
-
-void game::set_player_direction(ANIM_DIRECTION dir)
-{
-    player1.set_direction(dir);
 }
 
 void game::update_stage_scrolling()
@@ -1540,47 +1398,86 @@ void game::update_stage_scrolling()
 
 
 
-void game::draw_explosion(st_position center, bool show_players) {
+void game::draw_explosion(short int centerX, short int centerY, bool show_players) {
+	unsigned int timerInit;
+	int distance=0, mode=0;
+	int accel=1;
+
+	timerInit = timer.getTimer();
+
     draw_lib.update_screen();
-    int angle_inc = 0;
-
-
-    for (int i=5; i<RES_W; i+=6) {
-        loaded_stage.show_stage();
+	soundManager.stop_music();
+	soundManager.play_sfx(SFX_PLAYER_DEATH);
+	// x = a + r * cos(t)
+	// y = b + r * sin(t)
+	while (timer.getTimer() < timerInit+2000) {
+        loaded_stage.showStage();
         if (show_players) {
             player1.show();
         }
         loaded_stage.showAbove();
-        angle_inc += 5;
-        if (angle_inc > 360) {
-            angle_inc = 0;
-        }
-        draw_lib.draw_explosion(center, i, angle_inc);
-        for (int k=50; k<250; k+=80) {
-            if (i > k) {
-                draw_lib.draw_explosion(center, i-k, angle_inc);
+        for (int i=0; i<6; i++) {
+			graphLib.copyArea(st_rectangle(TILESIZE*mode, 0, graphLib.small_explosion.width/3, graphLib.small_explosion.height), st_position(centerX+distance*cos(static_cast<double>(i*45)), centerY+distance*sin(static_cast<double>(i*45))), &graphLib.small_explosion, &graphLib.gameScreen);
+		}
+		if (distance > 50) {
+			for (int i=0; i<6; i++) {
+				graphLib.copyArea(st_rectangle(TILESIZE*mode, 0, graphLib.small_explosion.width/3, graphLib.small_explosion.height), st_position(centerX+(distance-50)*cos(static_cast<double>(i*45)), centerY+(distance-50)*sin(static_cast<double>(i*45))), &graphLib.small_explosion, &graphLib.gameScreen);
+			}
+		}
+		distance += 3;
+		if (distance % 6 == 0) {
+			if (mode+1 <= 2) {
+				mode++;
+			} else {
+				mode = 0;
+			}
+			if (accel +1 <= 5) {
+				accel++;
+			}
+		}
+        draw_lib.update_screen();
+        timer.delay(10);
+	}
+}
+
+void game::draw_implosion(short int centerX, short int centerY) {
+	int distance=RES_W*0.5, mode=0;
+	int accel=1;
+    int second_distance = 100;
+
+    draw_lib.update_screen();
+	soundManager.stop_music();
+    soundManager.play_repeated_sfx(SFX_IMPLOSION, 1);
+	// x = a + r * cos(t)
+	// y = b + r * sin(t)
+    while (distance > -second_distance) {
+        loaded_stage.showStage();
+        player1.show();
+        loaded_stage.showAbove();
+        if (distance > 0) {
+            for (int i=0; i<6; i++) {
+				graphLib.copyArea(st_rectangle(TILESIZE*mode, 0, graphLib.small_explosion.width/3, graphLib.small_explosion.height), st_position(centerX+distance*cos(static_cast<double>(i*45)), centerY+distance*sin(static_cast<double>(i*45))), &graphLib.small_explosion, &graphLib.gameScreen);
             }
         }
+		if (distance < RES_W*0.5-50) {
+            for (int i=0; i<6; i++) {
+				graphLib.copyArea(st_rectangle(TILESIZE*mode, 0, graphLib.small_explosion.width/3, graphLib.small_explosion.height), st_position(centerX+(distance+second_distance)*cos(static_cast<double>(i*45)), centerY+(distance+second_distance)*sin(static_cast<double>(i*45))), &graphLib.small_explosion, &graphLib.gameScreen);
+			}
+		}
+		distance -= 3;
+		if ((int)abs((float)distance) % 4 == 0) {
+			if (mode+1 <= 2) {
+				mode++;
+			} else {
+				mode = 0;
+			}
+			if (accel +1 <= 5) {
+				accel++;
+			}
+		}
         draw_lib.update_screen();
-        timer.delay(10);
-    }
-
-    /*
-    //ANIMATION_TYPES pos_type, graphicsLib_gSurface* surface, const st_float_position &pos, st_position adjust_pos, unsigned int frame_time, unsigned int repeat_times, int direction, st_size framesize
-    st_float_position anim_pos = st_float_position(centerX-23+get_current_map_obj()->get_map_scrolling_ref()->x, centerY-23);
-    get_current_map_obj()->add_animation(ANIMATION_STATIC, &graphLib.explosion_player_death, anim_pos, st_position(0, 0), 100, 6, player1.get_direction(), st_size(47, 47));
-
-    while (timer.getTimer() < timerInit+2000) {
-        loaded_stage.show_stage();
-        if (show_players) {
-            player1.show();
-        }
-        loaded_stage.showAbove();
-        draw_lib.update_screen();
-        timer.delay(10);
-    }
-    timer.delay(300);
-    */
+        timer.delay(15);
+	}
 }
 
 void game::show_player()
@@ -1605,15 +1502,6 @@ void game::set_player_anim_type(ANIM_TYPE anim_type)
     player1.set_animation_type(anim_type);
 }
 
-void game::show_player_at(int x, int y)
-{
-#ifdef ANDROID
-        __android_log_print(ANDROID_LOG_INFO, "###ROCKBOT2###", "### GAME::show_player_at[%d, %d] ###", x, y);
-#endif
-    //std::cout << "show_player_at[" << x << ", " << y << "]" << std::endl;
-    player1.show_at(st_position(x, y));
-}
-
 st_position game::get_player_position()
 {
     return st_position(player1.getPosition().x, player1.getPosition().y);
@@ -1629,6 +1517,11 @@ void game::set_player_direction(Uint8 direction)
     player1.set_direction(direction);
 }
 
+void game::player_fall()
+{
+    player1.fall();
+}
+
 void game::walk_character_to_screen_point_x(character *char_obj, short pos_x)
 {
 	/// @TODO: jump obstacles
@@ -1637,7 +1530,7 @@ void game::walk_character_to_screen_point_x(character *char_obj, short pos_x)
 		char_obj->set_direction(ANIM_DIRECTION_LEFT);
 		while (char_obj->get_real_position().x+char_obj->get_size().width/2 > pos_x) {
 			char_obj->set_position(st_position(char_obj->getPosition().x-2, char_obj->getPosition().y));
-            loaded_stage.show_stage();
+            loaded_stage.showStage();
             loaded_stage.showAbove();
             loaded_stage.show_npcs();
             player1.show();
@@ -1649,7 +1542,7 @@ void game::walk_character_to_screen_point_x(character *char_obj, short pos_x)
         char_obj->set_animation_type(ANIM_TYPE_WALK);
 		while (char_obj->get_real_position().x+char_obj->get_size().width/2 < pos_x) {
 			char_obj->set_position(st_position(char_obj->getPosition().x+2, char_obj->getPosition().y));
-            loaded_stage.show_stage();
+            loaded_stage.showStage();
             loaded_stage.showAbove();
             loaded_stage.show_npcs();
             player1.show();
@@ -1666,9 +1559,6 @@ void game::set_player_teleporter(short set_teleport_n, st_position set_player_po
 	_player_teleporter.teleporter_n = set_teleport_n;
 	_player_teleporter.old_player_pos.x = set_player_pos.x;
 	_player_teleporter.old_player_pos.y = set_player_pos.y;
-
-    std::cout << "################### SET PLAYER TELEPORTER ###################" << std::endl;
-
 	_player_teleporter.active = true;
 	_player_teleporter.finished = false;
     _player_teleporter.old_map_scroll = loaded_stage.getMapScrolling();
@@ -1677,102 +1567,8 @@ void game::set_player_teleporter(short set_teleport_n, st_position set_player_po
 
 bool game::is_player_on_teleporter()
 {
-    std::cout << "######## is_player_on_teleporter[" << _player_teleporter.active << "] ########" << std::endl;
     return _player_teleporter.active;
 }
-
-short game::get_last_castle_stage()
-{
-    if (fio.can_access_castle(game_save) == false && !GAME_FLAGS[FLAG_ALLWEAPONS]) {
-        return STAGE8;
-    }
-    int pos_n = CASTLE1_STAGE1; // stage 1 is accessible when all initial stages are completed
-    for (int i=CASTLE1_STAGE1; i<=CASTLE1_STAGE5; i++) {
-        std::cout << "GAME_FLAGS[FLAG_ALLWEAPONS]: " << GAME_FLAGS[FLAG_ALLWEAPONS] << "], CASTLE1_STAGE1[" << CASTLE1_STAGE1 << "], stage[" << i << "]: (" << game_save.stages[i] << ")" << std::endl;
-        if (game_save.stages[i] == 0 && !GAME_FLAGS[FLAG_ALLWEAPONS]) {
-            break;
-        }
-        pos_n = i+1;
-    }
-    std::cout << "game::get_last_castle_stage[" << pos_n << "]" << std::endl;
-    if (pos_n > CASTLE1_STAGE5) {
-        pos_n = CASTLE1_STAGE5;
-    }
-    return pos_n;
-}
-
-short game::get_current_save_slot()
-{
-    return current_save_slot;
-}
-
-void game::set_current_save_slot(short n)
-{
-    current_save_slot = n;
-}
-
-void game::save_game()
-{
-    if (fio.write_save(game_save, current_save_slot) == false) {
-        show_savegame_error();
-        return;
-    }
-#ifdef ANDROID
-    // if config is set to use cloud
-    /*
-    if (game_config.android_use_play_services == true && game_config.android_use_cloud_save) {
-        graphicsLib_gSurface bg_copy;
-        graphLib.initSurface(st_size(RES_W, RES_H), &bg_copy);
-        graphLib.copyArea(st_position(0, 0), &graphLib.gameScreen, &bg_copy);
-
-        graphLib.blank_screen();
-        graphLib.draw_text(10, 10, "WRITTING SAVE DATA TO GOOGLE DRIVE,");
-        graphLib.draw_text(10, 20, "PLEASE WAIT AND BE SURE TO HAVE");
-        graphLib.draw_text(10, 30, "AN AVAILABLE NETWORK CONNECTION.");
-        graphLib.updateScreen();
-        game_services.cloud_save_game(current_save_slot);
-        timer.delay(200);
-        graphLib.copyArea(st_position(0, 0), &bg_copy, &graphLib.gameScreen);
-        graphLib.updateScreen();
-    }
-    */
-#endif
-}
-
-void game::set_show_fps_enabled(bool enabled)
-{
-    show_fps_enabled = enabled;
-}
-
-bool game::get_show_fps_enabled()
-{
-    return show_fps_enabled;
-}
-
-
-#ifdef ANDROID
-bool game::load_save_data_from_cloud()
-{
-    graphicsLib_gSurface bg_copy;
-    graphLib.initSurface(st_size(RES_W, RES_H), &bg_copy);
-    graphLib.copyArea(st_position(0, 0), &graphLib.gameScreen, &bg_copy);
-
-    // show loading from network dialog
-    graphLib.blank_screen();
-    graphLib.draw_text(10, 10, "LOADING SAVE DATA FROM GOOGLE DRIVE,");
-    graphLib.draw_text(10, 20, "PLEASE WAIT AND BE SURE TO HAVE");
-    graphLib.draw_text(10, 30, "AN AVAILABLE NETWORK CONNECTION.");
-    graphLib.updateScreen();
-    for (int i=0; i<SAVE_MAX_SLOT_NUMBER; i++) {
-        game_services.cloud_load_game(i);
-    }
-    graphLib.copyArea(st_position(0, 0), &bg_copy, &graphLib.gameScreen);
-    graphLib.updateScreen();
-    return fio.have_one_save_file();
-}
-#endif
-
-
 
 void game::remove_current_teleporter_from_list()
 {
@@ -1787,17 +1583,15 @@ void game::select_game_screen()
     std::vector<std::string> game_list = fio.read_game_list();
     if (game_list.size() < 1) {
         _selected_game = std::string("");
-        std::cout << "select_game_screen [NO GAMES]" << std::endl;
-        exit(-1);
+        return;
     } else if (game_list.size() == 1) {
         _selected_game = game_list.at(0);
-        std::cout << "select_game_screen [" + _selected_game + "]" << std::endl;
         return;
     }
-    graphLib.show_config_bg();
-    graphLib.draw_text(10, 20, "SELECT GAME:");
+    graphLib.clear_area(0, 0, RES_W, RES_H, 0, 0, 0);
+    graphLib.draw_text(10, 10, "SELECT GAME:");
 
-    option_picker main_picker(false, st_position(30, 40), game_list, false);
+    option_picker main_picker(false, st_position(40, 50), game_list, false);
     main_picker.enable_check_input_reset_command();
     draw_lib.update_screen();
     bool repeat_menu = true;
@@ -1825,27 +1619,32 @@ string game::get_selected_game()
 bool game::is_free_version()
 {
 #ifdef DEMO_VERSION
-    return true;
-#else
-    return false;
+    if (_selected_game == "Rockbot2") {
+        return true;
+    }
 #endif
+    return false;
 }
 
+float game::get_fps_speed_multiplier()
+{
+    float speed = fps_manager.get_fps_speed_multiplier();
+    return speed;
+}
 
 void game::finish_player_teleporter()
 {
     remove_all_projectiles();
     remove_players_slide();
     player1.recharge(ENERGY_TYPE_HP, ENERGY_ITEM_BIG);
-    draw_lib.fade_out_screen(0, 0, 0, 500);
+    player1.teleport_out();
     timer.delay(1000);
 
-    std::cout << "################### RESET PLAYER TELEPORTER ###################" << std::endl;
     _player_teleporter.active = false;
     _last_stage_used_teleporters.insert(pair<int,bool>(_player_teleporter.teleporter_n, true));
 	// teleport out
 	soundManager.play_sfx(SFX_TELEPORT);
-    draw_lib.fade_out_screen(0, 0, 0, 500);
+    player1.teleport_out();
     _player_teleporter.old_player_pos.y -= 5;
     player1.set_position(_player_teleporter.old_player_pos);
     loaded_stage.set_current_map(_player_teleporter.old_map_n);
@@ -1868,7 +1667,7 @@ void game::finish_player_teleporter()
 void game::show_stage(int wait_time, bool move_npcs)
 {
     if (_dark_mode == false) {
-        loaded_stage.show_stage();
+        loaded_stage.showStage();
     }
 	if (move_npcs == true) {
         loaded_stage.move_npcs();
@@ -1894,17 +1693,18 @@ classMap *game::get_current_map_obj()
     return loaded_stage.get_current_map();
 }
 
-void game::object_teleport_boss(st_position dest_pos, Uint8 dest_map, Uint8 teleporter_id, bool must_return)
+void game::object_teleport_boss(st_position dest_pos, Uint8 dest_map, Uint8 teleporter_id)
 {
+
     // checa se já foi usado
     if (_last_stage_used_teleporters.find(teleporter_id) != _last_stage_used_teleporters.end()) {
         return;
     }
     std::cout << "############################################ TELEPORT #2" << std::endl;
-    if (must_return) {
-        set_player_teleporter(teleporter_id, st_position(player1.getPosition().x, player1.getPosition().y), true);
-    }
-    draw_lib.fade_out_screen(0, 0, 0, 500);
+    set_player_teleporter(teleporter_id, st_position(player1.getPosition().x, player1.getPosition().y), true);
+    classPlayer* test_player = &player1;
+    test_player->teleport_out();
+    graphLib.blank_screen();
     draw_lib.update_screen();
     timer.delay(500);
 
@@ -1912,14 +1712,7 @@ void game::object_teleport_boss(st_position dest_pos, Uint8 dest_map, Uint8 tele
 
     int new_scroll_pos = loaded_stage.get_first_lock_on_left(dest_pos.x);
     loaded_stage.set_scrolling(st_float_position(new_scroll_pos, 0));
-    classPlayer* test_player = &player1;
-    int pos_y = loaded_stage.get_current_map()->get_first_lock_on_bottom(dest_pos.x*TILESIZE, -1, test_player->get_size().width, test_player->get_size().height);
-    if (pos_y < 0 || pos_y > RES_H/TILESIZE) {
-        pos_y = 0;
-    }
-    // adjust to avoid getting stuck into ground
-    pos_y--;
-    test_player->set_position(st_position(dest_pos.x*TILESIZE, pos_y*TILESIZE));
+    test_player->set_position(st_position(dest_pos.x*TILESIZE, 0));
     test_player->char_update_real_position();
 
     loaded_stage.get_current_map()->reset_scrolled();
@@ -1931,8 +1724,7 @@ void game::object_teleport_boss(st_position dest_pos, Uint8 dest_map, Uint8 tele
 
 bool game::show_config(short finished_stage)
 {
-    game_menu menu;
-    if (menu.show_main_config(finished_stage, true) == 1) {
+    if (scenes.show_main_config(finished_stage, true) == 1) {
         input.clean();
         timer.delay(50);
         config_manager.disable_ingame_menu();
@@ -1945,9 +1737,9 @@ bool game::show_config(short finished_stage)
 void game::show_savegame_error()
 {
     std::vector<std::string> msgs;
-    msgs.push_back(strings_map::get_instance()->get_ingame_string(strings_ingame_savegameerror1, game_config.selected_language));
-    msgs.push_back(strings_map::get_instance()->get_ingame_string(strings_ingame_savegameerror2, game_config.selected_language));
-    msgs.push_back(strings_map::get_instance()->get_ingame_string(strings_ingame_savegameerror3, game_config.selected_language));
+    msgs.push_back(strings_map::get_instance()->get_ingame_string(strings_ingame_savegameerror1));
+    msgs.push_back(strings_map::get_instance()->get_ingame_string(strings_ingame_savegameerror2));
+    msgs.push_back(strings_map::get_instance()->get_ingame_string(strings_ingame_savegameerror3));
     draw_lib.show_ingame_warning(msgs);
 }
 
@@ -1993,14 +1785,9 @@ short game::get_drop_item_id(short type)
 
 void game::show_map()
 {
-    loaded_stage.show_stage();
+    loaded_stage.showStage();
     loaded_stage.showAbove();
     draw_lib.update_screen();
-}
-
-void game::set_current_stage(int stage)
-{
-    currentStage = stage;
 }
 
 

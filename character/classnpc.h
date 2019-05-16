@@ -36,12 +36,10 @@ public:
     classnpc(int stage_id, int map_id, int main_id, st_position npc_pos, short int direction, bool player_friend); // spawned npc
     void initFrames();
     void execute();
-    void init_animation();
     void boss_move();
     void copy(classnpc *from);
     void move();
     void move_projectiles();
-    void show_projectiles();
     virtual bool is_boss();
     void set_is_boss(bool set_boss);
     bool is_player_friend();
@@ -53,17 +51,8 @@ public:
     bool is_subboss();
     void reset_position();
     st_position get_start_position();
-    st_position get_bg_position();
+    st_rectangle get_hitbox();
     void show();
-    // those are needed for AI to use because of linker not reconizing character class
-    void npc_set_hp(st_hit_points new_hp);
-    void npc_set_position(st_float_position pos);
-    void npc_set_direction(short dir);
-    void npc_set_initialized(short init);
-    void set_parent_id(int parent_id);
-    int get_parent_id();
-    void reset_timers();
-    bool is_static();
 
 
 
@@ -103,8 +92,8 @@ protected:
     // boss member variables
     short _initialized; /**< TODO */
     bool _screen_blinked; /**< TODO */
-    int _parent_id;
-    st_position static_bg_pos;
+
+
 };
 
 #endif // CLASSNPC_H

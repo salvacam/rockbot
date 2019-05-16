@@ -12,10 +12,6 @@ TabScenelist::TabScenelist(QWidget *parent) : QDialog(parent), ui(new Ui::Scenes
     ui->setupUi(this);
     ui->object_listView->setModel(&model_objects);
     ui->scenes_tableView->setModel(&model_scenes);
-
-    ui->scenes_tableView->setColumnWidth( 0, 45 );
-    ui->scenes_tableView->setColumnWidth( 1, 45 );
-
     ui->scenes_tableView->setEditTriggers(QAbstractItemView::DoubleClicked);
     ui->scenes_tableView->setSelectionMode(QAbstractItemView::SingleSelection);
 
@@ -25,11 +21,13 @@ TabScenelist::TabScenelist(QWidget *parent) : QDialog(parent), ui(new Ui::Scenes
     ComboBoxDelegate* delegate = new ComboBoxDelegate(this);
     ui->scenes_tableView->setItemDelegateForColumn(2, delegate);
     /// @TODO: find a way that works for both Qt4 and 5 - http://stackoverflow.com/questions/17535563/how-to-get-a-qtableview-to-fill-100-of-the-width
+
 #if QT_VERSION >= 0x050000
-    ui->scenes_tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents); // Qt5
+    ui->scenes_tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch); // Qt5
 #else
-    ui->scenes_tableView->horizontalHeader()->setResizeMode(QHeaderView::ResizeToContents); // Qt4
+    ui->scenes_tableView->horizontalHeader()->setResizeMode(QHeaderView::Stretch); // Qt4
 #endif
+
     data_loading = true;
 
     ScenesMediator::get_instance()->scenes_list = fio.load_scenes();
@@ -174,11 +172,6 @@ void TabScenelist::on_addButton_clicked()
             std::cout << "ADDED at row["  << i << "], ScenesMediator::get_instance()->scenes_list.size: " << (ScenesMediator::get_instance()->scenes_list.size()) << std::endl;
 
             ui->scenes_tableView->setModel(&model_scenes);
-
-            ui->scenes_tableView->setColumnWidth( 0, 45 );
-            ui->scenes_tableView->setColumnWidth( 1, 45 );
-
-
             model_scenes.update();
             break;
         }
@@ -224,11 +217,6 @@ void TabScenelist::on_removeButton_clicked()
     ScenesMediator::get_instance()->scenes_list.at(ScenesMediator::get_instance()->selected_scene).objects[SCENE_OBJECTS_MAX-1].repeat_value = 0;
 
     ui->scenes_tableView->setModel(&model_scenes);
-
-    ui->scenes_tableView->setColumnWidth( 0, 45 );
-    ui->scenes_tableView->setColumnWidth( 1, 45 );
-
-
     model_scenes.update();
 }
 

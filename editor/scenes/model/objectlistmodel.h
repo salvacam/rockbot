@@ -2,7 +2,6 @@
 #define OBJECTLISTMODEL_H
 
 #include <QAbstractTableModel>
-#include <QStyleOptionViewItem>
 #include "scenes/scenesmediator.h"
 
 class ObjectListModel : public QAbstractTableModel

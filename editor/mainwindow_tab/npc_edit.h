@@ -99,8 +99,6 @@ private slots:
 
     void on_pushButton_2_clicked();
 
-    void on_backgroundFileComboBox_currentIndexChanged(const QString &arg1);
-
 private:
 	void fill_data();
 

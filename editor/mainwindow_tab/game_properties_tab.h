@@ -2,7 +2,7 @@
 #define GAME_PROPERTIES_TAB_H
 
 #include <QWidget>
-#include "castlepointsdialog.h"
+#include "mainwindow_tab/stageselectmapdialog.h"
 
 namespace Ui {
 class game_properties_tab;
@@ -13,7 +13,7 @@ class game_properties_tab : public QWidget
     Q_OBJECT
     
 public:
-    explicit game_properties_tab(QWidget *parent = nullptr);
+    explicit game_properties_tab(QWidget *parent = 0);
     ~game_properties_tab();
     void reload();
 
@@ -51,6 +51,26 @@ private slots:
 
     void on_gameStartMusic_comboBox_currentIndexChanged(const QString &arg1);
 
+    void on_castlePoint_1_x_valueChanged(int arg1);
+
+    void on_castlePoint_1_y_valueChanged(int arg1);
+
+    void on_castlePoint_2_x_valueChanged(int arg1);
+
+    void on_castlePoint_2_y_valueChanged(int arg1);
+
+    void on_castlePoint_3_x_valueChanged(int arg1);
+
+    void on_castlePoint_3_y_valueChanged(int arg1);
+
+    void on_castlePoint_4_x_valueChanged(int arg1);
+
+    void on_castlePoint_4_y_valueChanged(int arg1);
+
+    void on_castlePoint_5_x_valueChanged(int arg1);
+
+    void on_castlePoint_5_y_valueChanged(int arg1);
+
     void on_finalBoss_comboBox_currentIndexChanged(int index);
 
     void on_editMap_pushButton_clicked();
@@ -62,7 +82,7 @@ private:
     Ui::game_properties_tab *ui;
     bool _data_loading;
     int _current_stage;
-    CastlePointsDialog* castlePointsDialog;
+    StageSelectMapDialog map_dialog;
 };
 
 #endif // GAME_PROPERTIES_TAB_H

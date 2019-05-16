@@ -10,7 +10,7 @@ class TextPreviewArea : public QWidget
 {
 public:
     explicit TextPreviewArea(QWidget *parent = 0);
-    void set_selected_n(int n, std::string text_list[]);
+    void set_selected_n(int n);
 
 protected:
     void paintEvent(QPaintEvent *event);
@@ -19,7 +19,6 @@ protected:
 private:
     int selected_n;
     QFont monospace;
-    std::string scene_text_list[SCENE_TEXT_LINES_N];
 };
 
 #endif // TEXTPREVIEWAREA_H

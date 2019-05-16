@@ -180,28 +180,6 @@ struct st_rectangle {
 		w = setW;
 		h = setH;
 	}
-
-    bool is_empty() {
-        if (x == 0 && y == 0 && w == 0 && h == 0) {
-            return true;
-        }
-        return false;
-    }
-    bool operator==(const st_rectangle &comp_pt) const
-    {
-        if (x == comp_pt.x && y == comp_pt.y && w == comp_pt.w && h == comp_pt.h) {
-            return true;
-        }
-        return false;
-    }
-    bool operator!=(const st_rectangle &comp_pt) const
-    {
-        if (x != comp_pt.x || y != comp_pt.y || w != comp_pt.w && h != comp_pt.h) {
-            return true;
-        }
-        return false;
-    }
-
 };
 
 struct st_color {
@@ -229,6 +207,7 @@ struct st_color {
 struct graphicsLib_gSurface {
     private:
         SDL_Surface *gSurface;
+
 
         SDL_Color get_pixel_color(Uint32 pixel) const {
             if (!gSurface) {
@@ -282,7 +261,6 @@ struct graphicsLib_gSurface {
         std::vector<st_position> colorkey2_points;
         std::vector<st_position> colorkey3_points;
         bool show_debug;
-        bool is_rle_enabled;
 
         graphicsLib_gSurface()
         {
@@ -292,11 +270,11 @@ struct graphicsLib_gSurface {
             persistent = false;
             video_screen = false;
             show_debug = false;
-            is_rle_enabled = false;
         }
         // copy CONSTRUCTOR
         graphicsLib_gSurface(const graphicsLib_gSurface &original)
         {
+
             if (original.gSurface == NULL) {
                 gSurface = NULL;
                 width = 0;
@@ -307,7 +285,6 @@ struct graphicsLib_gSurface {
                 colorkey2_points = original.colorkey2_points;
                 colorkey3_points = original.colorkey3_points;
                 show_debug = false;
-                is_rle_enabled = false;
             } else {
                 width = original.width;
                 height = original.height;
@@ -323,13 +300,13 @@ struct graphicsLib_gSurface {
                 } else {
                     gSurface = NULL;
                 }
-                is_rle_enabled = original.is_rle_enabled;
             }
         }
 
         // assign constructor
         graphicsLib_gSurface& operator=(const graphicsLib_gSurface& original)
         {
+
             if (original.gSurface == NULL) {
                 gSurface = NULL;
                 width = 0;
@@ -339,7 +316,6 @@ struct graphicsLib_gSurface {
                 colorkey1_points = original.colorkey1_points;
                 colorkey2_points = original.colorkey2_points;
                 colorkey3_points = original.colorkey3_points;
-                is_rle_enabled = false;
             } else {
                 width = original.width;
                 height = original.height;
@@ -355,12 +331,12 @@ struct graphicsLib_gSurface {
                 } else {
                     gSurface = NULL;
                 }
-                is_rle_enabled = original.is_rle_enabled;
             }
         }
 
         ~graphicsLib_gSurface()
         {
+            setbuf(stdout, NULL);
             freeGraphic();
             colorkey1_points.clear();
             colorkey2_points.clear();
@@ -446,8 +422,6 @@ struct graphicsLib_gSurface {
             }
             if (surface != NULL) {
                 gSurface = surface;
-                width = gSurface->w;
-                height = gSurface->h;
             } else {
                 gSurface = NULL;
             }
@@ -512,11 +486,11 @@ struct graphicsLib_gSurface {
 
         bool is_null() {
             if (width <= 0 || height <= 0) {
-                //std::cout << "GSURFACE - invalid size[" << width << "][" << height << "]" << std::endl;
+                std::cout << "GSURFACE - invalid size[" << width << "][" << height << "]" << std::endl;
                 return true;
             }
             if (gSurface == NULL) {
-                //std::cout << "GSURFACE - SDL-Surface is NULL" << std::endl;
+                std::cout << "GSURFACE - SDL-Surface is NULL" << std::endl;
                 return true;
             }
         }
@@ -527,9 +501,6 @@ struct graphicsLib_gSurface {
                 return 0;
             }
             if (x >= gSurface->w || y >= gSurface->h) {
-                return 0;
-            }
-            if (is_rle_enabled) {
                 return 0;
             }
 
@@ -553,9 +524,6 @@ struct graphicsLib_gSurface {
                 return 0;
             }
             if (x >= gSurface->w || y >= gSurface->h) {
-                return 0;
-            }
-            if (is_rle_enabled) {
                 return 0;
             }
 
@@ -585,11 +553,8 @@ struct graphicsLib_gSurface {
             if (gSurface == NULL || gSurface->format == NULL) {
                 return;
             }
-            if (is_rle_enabled) {
-                return;
-            }
             int bpp = gSurface->format->BytesPerPixel;
-            // Here p is the address to the pixel we want to set //
+            /* Here p is the address to the pixel we want to set */
             Uint8 *p = (Uint8 *)gSurface->pixels + y * gSurface->pitch + x * bpp;
 
             switch(bpp) {
@@ -763,10 +728,6 @@ struct st_input_button_config {
         value = -1;
         axis_type = 0;
     }
-};
-
-struct st_surface_with_direction {
-    graphicsLib_gSurface surface[2];
 };
 
 

@@ -191,8 +191,8 @@ void common::fill_projectiles_combo(QComboBox *combo, bool add_empty_slot)
     if (add_empty_slot) {
         combo->addItem(QString(""));
     }
-    for (int i=0; i<Mediator::get_instance()->projectile_list_v3.size(); i++) {
-        QString temp_str = QString("[") + QString::number(i) + QString("] - ") + QString(Mediator::get_instance()->projectile_list_v3.at(i).name);
+    for (int i=0; i<Mediator::get_instance()->projectile_list_v2.size(); i++) {
+        QString temp_str = QString("[") + QString::number(i) + QString("] - ") + QString(Mediator::get_instance()->projectile_list_v2.at(i).name);
         combo->addItem(temp_str);
     }
 }
@@ -230,7 +230,7 @@ void common::fill_ai_options_combo(int action, QComboBox *combo)
 
     combo->clear(); // delete all previous entries
 
-    //std::cout << "########## common::fill_ai_options_combo action[" << action << "]" << std::endl;
+    //action--;
 
     std::vector<std::string> list;
 	if (action == AI_ACTION_WALK) {
@@ -247,7 +247,7 @@ void common::fill_ai_options_combo(int action, QComboBox *combo)
 		list = AI_ACTION_DASH_OPTIONS;
 	} else if (action == AI_ACTION_GRAB_WALL) {
 		list = AI_ACTION_GRAB_WALL_OPTIONS;
-    } else if (action == AI_ACTION_SPAWN_NPC || action == AI_ACTION_REPLACE_NPC || action == AI_ACTION_MORPH_INTO_NPC) {
+    } else if (action == AI_ACTION_SPAWN_NPC || action == AI_ACTION_REPLACE_NPC) {
         list = common::get_npc_names_list();
     } else if (action == AI_ACTION_SHOT_PROJECTILE_AHEAD || action == AI_ACTION_SHOT_PROJECTILE_PLAYER_DIRECTION || action == AI_ACTION_SHOT_PROJECTILE_INVERT_DIRECTION || action == AI_ACTION_JUMP_ATTACK_UP || action == AI_ACTION_JUMP_ATTACK_AHEAD_ONCE) {
         //list = AI_ACTION_SHOT_OPTIONS;
@@ -305,7 +305,7 @@ void common::fill_players_combo(QComboBox* combo)
 {
     combo->clear(); // delete all previous entries
     for (int i=0; i<FS_MAX_PLAYERS; i++) {
-        combo->addItem(QString::number(i+1)+QString(" [")+QString(Mediator::get_instance()->player_list_v3_1[i].name)+QString("]"));
+        combo->addItem(QString::number(i+1)+QString(" [")+QString(Mediator::get_instance()->player_list[i].name)+QString("]"));
     }
 }
 
@@ -389,24 +389,6 @@ void common::fill_scenes_combo(QComboBox *combo)
     }
 }
 
-void common::fill_languages_combo(QComboBox *combo)
-{
-    combo->clear();
-    // add empty item to be used to unset scene
-    combo->addItem(QString("English"));
-    combo->addItem(QString("French"));
-    combo->addItem(QString("Spanish"));
-    combo->addItem(QString("Italian"));
-    combo->addItem(QString("Portuguese"));
-}
-
-void common::fill_numbered_combo(QComboBox *combo, int start, int end)
-{
-    for (int i=start; i<=end; i++) {
-        combo->addItem(QString::number(i));
-    }
-}
-
 std::vector<std::string> common::get_npc_names_list()
 {
     std::vector<std::string> res;
@@ -419,8 +401,8 @@ std::vector<std::string> common::get_npc_names_list()
 std::vector<std::string> common::get_weapon_names_list()
 {
     std::vector<std::string> res;
-    for (int i=0; i<Mediator::get_instance()->projectile_list_v3.size(); i++) {
-        res.push_back(std::string(Mediator::get_instance()->projectile_list_v3.at(i).name));
+    for (int i=0; i<Mediator::get_instance()->projectile_list_v2.size(); i++) {
+        res.push_back(std::string(Mediator::get_instance()->projectile_list_v2.at(i).name));
     }
     return res;
 }

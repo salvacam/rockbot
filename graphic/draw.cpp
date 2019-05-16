@@ -8,21 +8,16 @@
 #define FLASH_DELAY 260
 #define FLASH_IMG_SIZE 8
 #define SNOW_DELAY 40
-#define LIGHTINGBOLT_DELAY1 4600
+#define LIGHTINGBOLT_DELAY1 3000
 #define LIGHTINGBOLT_DELAY2 80
+
 #define TRAIN_DELAY 2000
-#define TRAIN_EFFECT_DELAY 80
+#define TRAIN_EFFECT_DELAY 180
 #define TRAIN_EFFECT_SCREEN_MOVE 1
+
 #define INFERNO_ALPHA_STEP 3
-#define STARS_DELAY 50
+
 #define CASTLE_PATH_DURATION 1000
-
-#define ENERGY_BALL_IMG_SIZE 10
-#define ENERGY_BALL_PERCENT_SLICE 5
-
-#ifdef ANDROID
-#include <android/log.h>
-#endif
 
 extern graphicsLib graphLib;
 
@@ -48,7 +43,6 @@ extern soundLib soundManager;
 #include "file/file_io.h"
 extern CURRENT_FILE_FORMAT::file_io fio;
 extern CURRENT_FILE_FORMAT::st_save game_save;
-extern CURRENT_FILE_FORMAT::st_game_config game_config;
 
 draw::draw() : _rain_pos(0), _effect_timer(0), _flash_pos(0), _flash_timer(0), screen_gfx(SCREEN_GFX_NONE), flash_effect_enabled(false)
 {
@@ -68,11 +62,6 @@ draw::draw() : _rain_pos(0), _effect_timer(0), _flash_pos(0), _flash_timer(0), s
     // INFERNO EFFECT //
     _inferno_alpha = 0;
     _inferno_alpha_mode = 0;
-    _boss_current_hp = -99;
-    current_alpha = -1;
-    teleport_small_frame_count = 1;
-    teleport_small_frame = 0;
-    teleport_small_frame_timer = 0;
 
 }
 
@@ -81,10 +70,6 @@ void draw::preload()
     std::string filename = GAMEPATH + "shared/images/teleport_small.png";
     graphLib.surfaceFromFile(filename, &_teleport_small_gfx);
     _teleport_small_gfx.init_colorkeys();
-    teleport_small_frame_count = _teleport_small_gfx.width/_teleport_small_gfx.height;
-    if (teleport_small_frame_count <1) {
-        teleport_small_frame_count = 1;
-    }
 
     filename = GAMEPATH + "shared/images/snowflacke.png";
     graphLib.surfaceFromFile(filename, &snow_flacke);
@@ -95,10 +80,6 @@ void draw::preload()
     filename = GAMEPATH + "shared/images/black_line.png";
     graphLib.surfaceFromFile(filename, &shadow_line);
 
-    filename = GAMEPATH + "shared/images/boss_intro_bg.png";
-    graphLib.surfaceFromFile(filename, &boss_intro_bg);
-
-
     // DROPABLE OBJECT GRAPHICS
     for (int i=0; i<GameMediator::get_instance()->object_list.size(); i++) {
         for (int j=0; j<DROP_ITEM_COUNT; j++) {
@@ -108,42 +89,6 @@ void draw::preload()
             }
         }
     }
-
-    filename = GAMEPATH + "shared/images/hp_ball.png";
-    graphLib.surfaceFromFile(filename, &hud_player_hp_ball);
-
-    filename = GAMEPATH + "shared/images/wpn_ball.png";
-    graphLib.surfaceFromFile(filename, &hud_player_wpn_ball);
-    hud_player_wpn_ball.init_colorkeys();
-
-    filename = GAMEPATH + "shared/images/boss_hp_ball.png";
-    graphLib.surfaceFromFile(filename, &hud_boss_hp_ball);
-
-    filename = FILEPATH + "/images/1up_icons.png";
-    graphLib.surfaceFromFile(filename, &hud_player_1up);
-
-    filename = FILEPATH + "images/backgrounds/castle_point.png";
-    graphLib.surfaceFromFile(filename, &castle_point);
-
-    filename = GAMEPATH + "/shared/images/buttons/d_pad.png";
-    input_images_map.insert(std::pair<e_INPUT_IMAGES, graphicsLib_gSurface>(INPUT_IMAGES_DPAD_LEFTRIGHT, graphicsLib_gSurface()));
-    graphLib.surfaceFromFile(filename, &input_images_map[INPUT_IMAGES_DPAD_LEFTRIGHT]);
-
-    filename = GAMEPATH + "/shared/images/buttons/btn_a.png";
-    input_images_map.insert(std::pair<e_INPUT_IMAGES, graphicsLib_gSurface>(INPUT_IMAGES_A, graphicsLib_gSurface()));
-    graphLib.surfaceFromFile(filename, &input_images_map[INPUT_IMAGES_A]);
-
-    filename = GAMEPATH + "/shared/images/buttons/btn_b.png";
-    input_images_map.insert(std::pair<e_INPUT_IMAGES, graphicsLib_gSurface>(INPUT_IMAGES_B, graphicsLib_gSurface()));
-    graphLib.surfaceFromFile(filename, &input_images_map[INPUT_IMAGES_B]);
-
-    filename = GAMEPATH + "/shared/images/buttons/btn_x.png";
-    input_images_map.insert(std::pair<e_INPUT_IMAGES, graphicsLib_gSurface>(INPUT_IMAGES_X, graphicsLib_gSurface()));
-    graphLib.surfaceFromFile(filename, &input_images_map[INPUT_IMAGES_X]);
-
-    filename = GAMEPATH + "/shared/images/buttons/btn_y.png";
-    input_images_map.insert(std::pair<e_INPUT_IMAGES, graphicsLib_gSurface>(INPUT_IMAGES_Y, graphicsLib_gSurface()));
-    graphLib.surfaceFromFile(filename, &input_images_map[INPUT_IMAGES_Y]);
 }
 
 void draw::show_gfx()
@@ -162,7 +107,7 @@ void draw::show_gfx()
     } else if (screen_gfx == SCREEN_GFX_INFERNO) {
         show_inferno_effect();
     } else if (screen_gfx != SCREEN_GFX_NONE) {
-        std::cout << "screen_gfx[" << (int)screen_gfx << "] UNKNOWN" << std::endl;
+        //std::cout << "screen_gfx[" << (int)screen_gfx << "] UNKNOWN" << std::endl;
     }
 
     if (flash_effect_enabled == true || screen_gfx == SCREEN_GFX_FLASH) {
@@ -171,25 +116,8 @@ void draw::show_gfx()
     show_weapon_tooltip();
 }
 
-graphicsLib_gSurface *draw::get_input_surface(e_INPUT_IMAGES input)
-{
-    return &input_images_map[input];
-}
-
 void draw::update_screen()
 {
-    if (current_alpha != -1) {
-        if (current_alpha < 254) {
-            current_alpha += 2;
-        }
-        if (current_alpha_surface.width < RES_W) {
-            graphLib.initSurface(st_size(RES_W, RES_H), &current_alpha_surface);
-            graphLib.clear_surface_area(0, 0, RES_W, RES_H, current_alpha_color.r, current_alpha_color.g, current_alpha_color.b, current_alpha_surface);
-        } else {
-            graphLib.set_surface_alpha(current_alpha, current_alpha_surface);
-            graphLib.showSurface(&current_alpha_surface);
-        }
-    }
     graphLib.updateScreen();
 }
 
@@ -236,7 +164,7 @@ void draw::show_rain()
             _rain_pos = 0;
         }
         _effect_timer = timer.getTimer() + RAIN_DELAY;
-        std::cout << "## DRAW::SHOW_RAIN::SET-EFFECT-TIMER: " << _effect_timer << std::endl;
+        //std::cout << "## DRAW::SHOW_RAIN::SET-EFFECT-TIMER: " << _effect_timer << std::endl;
     }
 }
 
@@ -259,30 +187,29 @@ void draw::show_flash()
     }
 }
 
-void draw::show_boss_intro_sprites(int boss_id, bool show_fall)
+void draw::show_boss_intro_sprites(short boss_id, bool show_fall)
 {
+    UNUSED(show_fall);
     unsigned int intro_frames_n = 0;
     //int intro_frames_rollback = 0;
+    st_position boss_pos(20, -37);
     st_position sprite_size;
     graphicsLib_gSurface bgCopy, boss_graphics;
 
     std::string graph_filename = FILEPATH + "images/sprites/enemies/" + std::string(GameMediator::get_instance()->get_enemy(boss_id)->graphic_filename);
-
-#ifdef ANDROID
-    __android_log_print(ANDROID_LOG_INFO, "###ROCKBOT2###", "DRAW::show_boss_intro_sprites, id[%d], filename[%s]", boss_id, graph_filename.c_str());
-#endif
-
-
     sprite_size.x = GameMediator::get_instance()->get_enemy(boss_id)->frame_size.width;
     sprite_size.y = GameMediator::get_instance()->get_enemy(boss_id)->frame_size.height;
-
-    //std::cout << ">>> sprite_size.x[" << sprite_size.x << "], sprite_size.y[" << sprite_size.y << "]" << std::endl;
-
     graphLib.surfaceFromFile(graph_filename.c_str(), &boss_graphics);
-    int sprite_pos_y = BOSS_INTRO_BG_POS_Y-sprite_size.y/2;
-    st_position boss_pos(RES_W/2-sprite_size.x/2, sprite_pos_y);
 
-    graphLib.showSurface(&boss_intro_bg);
+    graphLib.initSurface(st_size(RES_W, RES_H), &bgCopy);
+    graph_filename = FILEPATH + "images/backgrounds/stage_boss_intro.png";
+    graphLib.surfaceFromFile(graph_filename.c_str(), &bgCopy);
+    st_position bg_pos(0, (RES_H/2)-(bgCopy.height/2));
+    graphLib.copyArea(bg_pos, &bgCopy, &graphLib.gameScreen);
+
+    update_screen();
+
+    int sprite_pos_y = RES_H/2 - sprite_size.y/2;
 
     for (int i=0; i<ANIM_FRAMES_COUNT; i++) {
         if (GameMediator::get_instance()->get_enemy(boss_id)->sprites[ANIM_TYPE_INTRO][i].used == true) {
@@ -291,19 +218,13 @@ void draw::show_boss_intro_sprites(int boss_id, bool show_fall)
     }
 
     // fall into position
-    if (show_fall == true) {
-        while (boss_pos.y < sprite_pos_y) {
-            boss_pos.y += 4;
-            graphLib.showSurface(&boss_intro_bg);
-            graphLib.copyArea(st_rectangle(0, 0, sprite_size.x, sprite_size.y), st_position(boss_pos.x, boss_pos.y), &boss_graphics, &graphLib.gameScreen);
-            graphLib.updateScreen();
-            timer.delay(5);
-        }
-        graphLib.updateScreen();
-        timer.delay(500);
-    } else {
-        boss_pos.y = sprite_pos_y;
+    while (boss_pos.y < sprite_pos_y) {
+        boss_pos.y += 4;
+        graphLib.copyArea(bg_pos, &bgCopy, &graphLib.gameScreen);
+        graphLib.copyArea(st_rectangle(0, 0, sprite_size.x, sprite_size.y), st_position(boss_pos.x, boss_pos.y), &boss_graphics, &graphLib.gameScreen);
+        graphLib.wait_and_update_screen(5);
     }
+    graphLib.wait_and_update_screen(500);
 
 
     // show intro sprites
@@ -311,20 +232,15 @@ void draw::show_boss_intro_sprites(int boss_id, bool show_fall)
         for (int i=0; i<ANIM_FRAMES_COUNT; i++) {
             if (GameMediator::get_instance()->get_enemy(boss_id)->sprites[ANIM_TYPE_INTRO][i].used == true) {
                 //std::cout << "i: " << i << ", used: " << GameMediator::get_instance()->get_enemy(boss_id).sprites[ANIM_TYPE_INTRO][i].used << ", duration: " << GameMediator::get_instance()->get_enemy(boss_id).sprites[ANIM_TYPE_INTRO][i].duration << std::endl;
-                graphLib.showSurface(&boss_intro_bg);
+                graphLib.copyArea(bg_pos, &bgCopy, &graphLib.gameScreen);
                 graphLib.copyArea(st_rectangle(sprite_size.x * GameMediator::get_instance()->get_enemy(boss_id)->sprites[ANIM_TYPE_INTRO][i].sprite_graphic_pos_x, 0, sprite_size.x, sprite_size.y), st_position(boss_pos.x, boss_pos.y), &boss_graphics, &graphLib.gameScreen);
-                // only wait if not last frame
-                if (i<ANIM_FRAMES_COUNT-1 && GameMediator::get_instance()->get_enemy(boss_id)->sprites[ANIM_TYPE_INTRO][i+1].used) {
-                    graphLib.updateScreen();
-                    timer.delay(GameMediator::get_instance()->get_enemy(boss_id)->sprites[ANIM_TYPE_INTRO][i].duration);
-                }
+                graphLib.wait_and_update_screen(GameMediator::get_instance()->get_enemy(boss_id)->sprites[ANIM_TYPE_INTRO][i].duration);
             }
         }
     } else { // just frow first sprite
-        graphLib.showSurface(&boss_intro_bg);
+        graphLib.copyArea(bg_pos, &bgCopy, &graphLib.gameScreen);
         graphLib.copyArea(st_rectangle(0, 0, sprite_size.x, sprite_size.y), st_position(boss_pos.x, boss_pos.y), &boss_graphics, &graphLib.gameScreen);
-        graphLib.updateScreen();
-        timer.delay(200);
+        graphLib.wait_and_update_screen(200);
     }
 }
 
@@ -336,7 +252,7 @@ void draw::show_ready()
     graphLib.copyArea(st_position(0, 0), &graphLib.gameScreen, &screen_copy);
 
     for (int i=0; i<6; i++) {
-        graphLib.draw_centered_text(dest_pos.y, strings_map::get_instance()->get_ingame_string(strings_ingame_ready_message, game_config.selected_language));
+        graphLib.draw_text(dest_pos.x, dest_pos.y, strings_map::get_instance()->get_ingame_string(strings_ingame_ready_message), st_color(240, 240, 240));
         update_screen();
         timer.delay(200);
         graphLib.copyArea(st_position(0, 0), &screen_copy, &graphLib.gameScreen);
@@ -362,46 +278,24 @@ void draw::set_teleport_small_colors(st_color color1, st_color color2)
 
 void draw::show_teleport_small(int x, int y)
 {
-    if (teleport_small_frame_count > 0) {
-        int x_origin = teleport_small_frame * _teleport_small_gfx.height;
-        if (timer.getTimer() > teleport_small_frame_timer) {
-            teleport_small_frame++;
-            teleport_small_frame_timer = timer.getTimer()+100;
-        }
-        //std::cout << "timer[" << timer.getTimer() << "], frame.timer[" << teleport_small_frame_timer << "], frames[" << teleport_small_frame_count << "], current frame[" << teleport_small_frame << "]" << std::endl;
-        if (teleport_small_frame >= teleport_small_frame_count) {
-            teleport_small_frame = 0;
-        }
-        st_rectangle origin_rect(x_origin, 0, _teleport_small_gfx.height, _teleport_small_gfx.height);
-        graphLib.showSurfaceRegionAt(&_teleport_small_gfx, origin_rect, st_position(x, y));
-    } else {
-        graphLib.showSurfaceAt(&_teleport_small_gfx, st_position(x, y), false);
-    }
+    graphLib.showSurfaceAt(&_teleport_small_gfx, st_position(x+_teleport_small_gfx.width/2, y+_teleport_small_gfx.height/2), false);
 }
 
-int draw::show_credits_text(bool can_leave, std::vector<std::string> credit_text)
+int draw::show_credits(bool can_leave)
 {
     int line_n=0;
     unsigned int scrolled = 0;
-    int posY = RES_H;
+    int posY = -RES_H;
     st_rectangle dest;
-    float bg1_speed = 0.5;
-    float bg2_speed = 3.5;
-    float bg1_pos = 0;
-    float bg2_pos = 0;
-    graphicsLib_gSurface bg1;
-    graphicsLib_gSurface bg2;
+    graphicsLib_gSurface credits_surface;
 
-    graphLib.surfaceFromFile(GAMEPATH + "/shared/images/star_field1.png", &bg1);
-    graphLib.surfaceFromFile(GAMEPATH + "/shared/images/star_field2.png", &bg2);
-
+    graphLib.initSurface(st_size(RES_W, RES_H+12), &credits_surface);
+    graphLib.blank_surface(credits_surface);
     graphLib.blank_screen();
 
 
-    std::cout << "draw::show_credits_text::START" << std::endl;
-
     // add the initial lines to screen
-    create_engine_credits_text();
+    create_credits_text(credits_surface);
 
     timer.delay(200);
     input.clean();
@@ -410,112 +304,46 @@ int draw::show_credits_text(bool can_leave, std::vector<std::string> credit_text
     update_screen();
 
     // scroll the lines
-    int limit = (credit_text.size()*12)+RES_H/2;
-    std::cout << "credit_text.size[" << credit_text.size() << "]" << std::endl;
-    while (scrolled < limit) {
+    while (scrolled < (credits_list.size()*12)+RES_H/2+46) {
 
-        //std::cout << "scrolled[" << scrolled << "], limit[" << limit << "]" << std::endl;
+        //std::cout << "CREDITS::posY[" << posY << "]" << std::endl;
 
-        //@TODO: draw stars fields //
-        graphLib.blank_screen();
-        graphLib.copyArea(st_position(0, bg1_pos), &bg1, &graphLib.gameScreen);
-        if (bg1_pos > 0) {
-            graphLib.copyArea(st_rectangle(0, RES_H-bg1_pos, RES_W, bg1_pos), st_position(0, 0), &bg1, &graphLib.gameScreen);
-        }
-        graphLib.copyArea(st_position(0, bg2_pos), &bg2, &graphLib.gameScreen);
-        if (bg2_pos > 0) {
-            graphLib.copyArea(st_rectangle(0, RES_H-bg2_pos, RES_W, bg2_pos), st_position(0, 0), &bg2, &graphLib.gameScreen);
-        }
-
-
-        // @TODO: calculate min and max to trestrain loop number
-        for (unsigned int i=0; i<credit_text.size(); i++) {
-            int text_pos = posY+12*i;
-
-            if (text_pos >= -12 && text_pos <= RES_H+12) {
-                std::size_t found_title_blue = credit_text.at(i).find("- ");
-                std::size_t found_title_red = credit_text.at(i).find("# ");
-                if (credit_text.at(i)[0] == '@') { // section
-                    std::string text_out = credit_text.at(i);
-                    text_out = text_out.substr(1, text_out.length()-1);
-                    graphLib.draw_centered_text(text_pos, text_out, graphLib.gameScreen, st_color(102, 255, 181));
-                } else if (found_title_red != std::string::npos) { // main title
-                    graphLib.draw_centered_text(text_pos, credit_text.at(i), graphLib.gameScreen, st_color(249, 98, 98));
-                } else if (found_title_blue != std::string::npos) { // sub-title
-                    graphLib.draw_centered_text(text_pos, credit_text.at(i), graphLib.gameScreen, st_color(95, 151, 255));
-                } else {
-                    graphLib.draw_centered_text(text_pos, credit_text.at(i));
-                }
-                //std::cout << "text_pos[" << i << "][" << text_pos << "]" << std::endl;
-            }
-        }
-
-
+        graphLib.copyArea(st_rectangle(0, posY, RES_W, RES_H), st_position(0, 0), &credits_surface, &graphLib.gameScreen);
+        update_screen();
         if (can_leave) {
             input.read_input();
-            if (input.wait_scape_time(STARS_DELAY) == 1 || input.p1_input[BTN_START] == 1) {
+            if (input.waitScapeTime(60) == 1 || input.p1_input[BTN_START] == 1) {
+                update_screen();
                 return 1;
             }
         } else {
-            timer.delay(STARS_DELAY);
+            timer.delay(60);
         }
-        posY--;
+        posY++;
         scrolled++;
-        // need to copy next line and reposition
-
-        bg1_pos += bg1_speed;
-        bg2_pos += bg2_speed;
-
-        if (bg1_pos >= RES_H) {
-            bg1_pos = 0;
+        if (posY > 12) {
+            graphLib.copyArea(st_rectangle(0, posY, credits_surface.width, RES_H), st_position(0, 0), &credits_surface, &credits_surface);
+            // scroll the lines
+            dest.x = 0;
+            dest.y = RES_H;
+            dest.w = RES_W;
+            dest.h = 12;
+            graphLib.blank_area(dest.x, dest.y, dest.w, dest.h, credits_surface);
+            draw_credit_line(credits_surface, line_n+21);
+            posY = 0;
+            line_n++;
         }
-        if (bg2_pos >= RES_H) {
-            bg2_pos = 0;
-        }
-        update_screen();
     }
     update_screen();
     return 0;
 }
 
-int draw::show_credits(bool can_leave)
+void draw::create_credits_text(graphicsLib_gSurface &surface)
 {
-    soundManager.stop_music();
-    soundManager.load_music("rockbot_endcredits.mod");
-    soundManager.play_music();
-    int res = show_credits_text(can_leave, create_engine_credits_text());
-    if (res == 1) {
-        soundManager.stop_music();
-        soundManager.load_music(game_data.game_start_screen_music_filename);
-        soundManager.play_music();
-        return 1;
-    }
-    //graphLib.blank_screen();// should leave presented by on the screen
-    graphLib.updateScreen();
-    timer.delay(1000);
-    if (can_leave == false) {
-        graphLib.draw_centered_text(RES_H/2+16, "YOU HAVE UNLOCKED A SECRET.");
-        graphLib.draw_centered_text(RES_H/2+28, "SELECT NEW GAME TO PICK");
-        graphLib.draw_centered_text(RES_H/2+40, "A NEW AVAILABLE CHARACTER.");
-
-        graphLib.draw_centered_text(RES_H/2+64, "PRESS A BUTTON TO CONTINUE.");
-        graphLib.updateScreen();
-    }
-    input.clean();
-    timer.delay(100);
-    input.wait_keypress();
-}
-
-void draw::show_unlocked_charsMsg()
-{
-
-}
-
-std::vector<string> draw::create_engine_credits_text()
-{
+    credits_list.clear();
 
     CURRENT_FILE_FORMAT::fio_strings fio_str;
-    std::vector<string> credits_list = fio_str.get_string_list_from_file(FILEPATH + "/game_credits.txt");
+    credits_list = fio_str.get_string_list_from_file(FILEPATH + "/game_credits.txt", LANGUAGE_ENGLISH);
 
     if (credits_list.size() > 0) {
         for (int i=0; i<6; i++) {
@@ -565,7 +393,6 @@ std::vector<string> draw::create_engine_credits_text()
     credits_list.push_back("CAPT. CHRIS AND KB");
     credits_list.push_back("SURT.OPENGAMEART");
     credits_list.push_back("AVERAGE-HANZO.DEVIANTART");
-    credits_list.push_back("FUNKY96.DEVIANTART");
     credits_list.push_back("");
     credits_list.push_back("");
     credits_list.push_back("");
@@ -618,7 +445,6 @@ std::vector<string> draw::create_engine_credits_text()
 
     credits_list.push_back("- PROGRAMMER -");
     credits_list.push_back("IURI FIEDORUK");
-    credits_list.push_back("FARLEY KNIGHT");
     credits_list.push_back("");
     credits_list.push_back("");
     credits_list.push_back("");
@@ -637,7 +463,7 @@ std::vector<string> draw::create_engine_credits_text()
     credits_list.push_back("- REVIEW & TESTING -");
     credits_list.push_back("ARISMEIRE KUMMER SILVA FIEDORUK");
     credits_list.push_back("NELSON ROSENBERG");
-    credits_list.push_back("ANDREW PRZELUCKI");
+    credits_list.push_back("");
     credits_list.push_back("");
     credits_list.push_back("");
 
@@ -673,22 +499,27 @@ std::vector<string> draw::create_engine_credits_text()
     credits_list.push_back("- PRESENTED BY -");
     credits_list.push_back("UPPERLAND STUDIOS");
 
-    return credits_list;
+    for (unsigned int i=0; i<=RES_H/12 && i<credits_list.size(); i++) {
+        std::size_t found = credits_list.at(i).find("- ");
+
+        if (found != std::string::npos) {
+            graphLib.draw_centered_text(12*i, credits_list.at(i), surface, st_color(95, 151, 255));
+        } else {
+            graphLib.draw_centered_text(12*i, credits_list.at(i), surface, st_color(235, 235, 235));
+        }
+    }
 }
 
 
-void draw::draw_credit_line(graphicsLib_gSurface &surface, Uint8 initial_line,std::vector<std::string> credit_text)
+void draw::draw_credit_line(graphicsLib_gSurface &surface, Uint8 initial_line)
 {
-    if (initial_line < credit_text.size()) {
-        std::cout << "draw::draw_credit_line - text[" << credit_text.at(initial_line) << "]" << std::endl;
-        std::size_t found = credit_text.at(initial_line).find("- ");
+    if (initial_line < credits_list.size()) {
+        std::size_t found = credits_list.at(initial_line).find("- ");
         if (found != std::string::npos) {
-            graphLib.draw_centered_text(RES_H, credit_text.at(initial_line), surface, st_color(95, 151, 255));
+            graphLib.draw_centered_text(RES_H, credits_list.at(initial_line), surface, st_color(95, 151, 255));
         } else {
-            graphLib.draw_centered_text(RES_H, credit_text.at(initial_line), surface, st_color(TEXT_DEFAUL_COLOR_VALUE, TEXT_DEFAUL_COLOR_VALUE, TEXT_DEFAUL_COLOR_VALUE));
+            graphLib.draw_centered_text(RES_H, credits_list.at(initial_line), surface, st_color(235, 235, 235));
         }
-    } else {
-        std::cout << "ERROR draw_credit_line, initial_line[" << initial_line << "], credit_text.size()[" << credit_text.size() << "]" << std::endl;
     }
 }
 
@@ -711,7 +542,7 @@ graphicsLib_gSurface *draw::get_object_graphic(int obj_id)
             objects_sprite_list.insert(std::pair<unsigned int, graphicsLib_gSurface>(obj_id, temp_sprite));
             it = objects_sprite_list.find(obj_id);
         } else {
-            std::cout << "ERROR: Invalid object graphic. Object_ID: '" + obj_id << "'" << std::endl;
+            //std::cout << "ERROR: Invalid object graphic. Object_ID: '" + obj_id << "'" << std::endl;
             return NULL;
         }
     }
@@ -739,7 +570,7 @@ void draw::show_ingame_warning(std::vector<std::string> message)
     input.wait_keypress();
 }
 
-void draw::fade_in_screen(int r, int g, int b, int total_delay)
+void draw::fade_in_screen(int r, int g, int b)
 {
     graphicsLib_gSurface screen_copy;
     graphLib.initSurface(st_size(RES_W, RES_H), &screen_copy);
@@ -749,17 +580,12 @@ void draw::fade_in_screen(int r, int g, int b, int total_delay)
     graphLib.initSurface(st_size(RES_W, RES_H), &transparent_area);
     graphLib.clear_surface_area(0, 0, RES_W, RES_H, r, g, b, transparent_area);
 
-    float step = 255.0/20.0;
-    float alpha_value = 255;
-    float delay = (total_delay / 25)-10;
-
-    for (float i=0; i<=20; i++) {
+    for (int i=255; i>=0; i-=FADE_INC) {
         graphLib.showSurface(&screen_copy);
-        graphLib.set_surface_alpha((int)alpha_value, transparent_area);
+        graphLib.set_surface_alpha(i, transparent_area);
         graphLib.showSurface(&transparent_area);
-        alpha_value -= step;
         graphLib.updateScreen();
-        timer.delay(delay);
+        timer.delay(1);
     }
 }
 
@@ -788,19 +614,6 @@ void draw::fade_out_screen(int r, int g, int b, int total_delay)
             timer.delay(delay);
         }
     }
-}
-
-// executes the fade-out each time update screen is called
-void draw::add_fade_out_effect(int r, int g, int b)
-{
-    current_alpha = 0;
-    current_alpha_color = st_color(r, g, b);
-}
-
-void draw::remove_fade_out_effect()
-{
-    current_alpha = -1;
-    current_alpha_surface.freeGraphic();
 }
 
 void draw::pixelate_screen()
@@ -855,7 +668,7 @@ void draw::pixelate_screen()
         graphLib.updateScreen();
         timer.delay(20);
     }
-    std::cout << "END" << std::endl;
+    //std::cout << "END" << std::endl;
     res_surface.freeGraphic();
 
 }
@@ -877,24 +690,69 @@ void draw::show_weapon_tooltip()
         if (direction_value == ANIM_DIRECTION_LEFT) {
             adjust_x = 10;
         }
-        graphLib.draw_weapon_tooltip_icon(_weapon_tooltip_n, st_position(_weapon_tooltip_pos_ref->x+adjust_x, _weapon_tooltip_pos_ref->y+adjust_y), true);
+        graphLib.draw_weapon_tooltip_icon(_weapon_tooltip_n, st_position(_weapon_tooltip_pos_ref->x+adjust_x, _weapon_tooltip_pos_ref->y+adjust_y));
     }
 }
 
-st_float_position draw::get_radius_point(st_position center_point, int radius, float angle)
+/*
+void draw::create_dynamic_background_surface(graphicsLib_gSurface &dest_surface, graphicsLib_gSurface &image_surface, int auto_scroll_mode)
 {
-    st_float_position res;
-    // x = r * cos(x0), y = r * sin(y0)
-    res.x = radius * cos(angle) + center_point.x;
-    res.y = radius * sin(angle) + center_point.y;
-    return res;
+    // initialize dest_surface
+    int n = 0;
+
+    //map_data[number].backgrounds[0].
+    graphicsLib_gSurface temp_surface;
+    if (auto_scroll_mode == BG_SCROLL_MODE_UP || auto_scroll_mode == BG_SCROLL_MODE_DOWN) {
+        graphLib.initSurface(st_size(image_surface.width, RES_H*2), &temp_surface);
+        int total_h = 0;
+        while (total_h <= RES_H*2) {
+            graphLib.copyArea(st_position(0, total_h), &image_surface, &temp_surface);
+            total_h += image_surface.height;
+            n++;
+        }
+    } else {
+        graphLib.initSurface(st_size(image_surface.width+RES_W, image_surface.height), &temp_surface);
+        int total_w = 0;
+        while (total_w <= image_surface.width+RES_W) {
+            graphLib.copyArea(st_position(total_w, 0), &image_surface, &temp_surface);
+            total_w += image_surface.width;
+            n++;
+        }
+    }
+    // convert temp_surface to screen-format then release it
+    graphLib.initSurface(st_size(temp_surface.width, temp_surface.height), &dest_surface);
+    graphLib.convert_surface_to_screen_format(temp_surface, dest_surface);
+    temp_surface.freeGraphic();
+}
+*/
+
+graphicsLib_gSurface *draw::get_dynamic_background(string filename)
+{
+    std::map<std::string, graphicsLib_gSurface>::iterator it;
+
+    it = maps_dynamic_background_list.find(filename);
+    if (it == maps_dynamic_background_list.end()) {
+        return NULL;
+    }
+
+    return &maps_dynamic_background_list.find(filename)->second;
+}
+
+graphicsLib_gSurface *draw::get_dynamic_foreground(string filename)
+{
+    return &maps_dynamic_background_list.find(filename)->second;
+}
+
+void draw::show_player_hp(int hp, int player_n, int selected_weapon, int selected_weapon_value)
+{
+    graphLib.draw_hp_bar(hp, player_n, WEAPON_DEFAULT, fio.get_heart_pieces_number(game_save));
+    if (selected_weapon != WEAPON_DEFAULT) {
+        graphLib.draw_hp_bar(selected_weapon_value, player_n, selected_weapon, fio.get_heart_pieces_number(game_save));
+    }
 }
 
 void draw::draw_castle_path(bool instant, st_position initial_point, st_position final_point)
 {
-    if (initial_point.x == 0 && initial_point.y == 0 && final_point.x == 0 && final_point.x == 0) {
-        return;
-    }
     int dist_x = initial_point.x - final_point.x;
     int dist_y = initial_point.y - final_point.y;
     int duration = CASTLE_PATH_DURATION;
@@ -904,10 +762,14 @@ void draw::draw_castle_path(bool instant, st_position initial_point, st_position
         step_delay = 0;
     }
 
-    std::cout << "step_delay[" << step_delay << "]" << std::endl;
+    //std::cout << "step_delay[" << step_delay << "]" << std::endl;
 
-    draw_castle_point(initial_point.x, initial_point.y);
-    draw_castle_point(final_point.x, final_point.y);
+    graphicsLib_gSurface castle_point;
+    std::string filename = FILEPATH + "images/backgrounds/castle_point.png";
+    graphLib.surfaceFromFile(filename, &castle_point);
+
+    graphLib.copyArea(st_position(initial_point.x, initial_point.y), &castle_point, &graphLib.gameScreen);
+    graphLib.copyArea(st_position(final_point.x, final_point.y), &castle_point, &graphLib.gameScreen);
     graphLib.updateScreen();
 
     int pos_y = initial_point.y - 1;
@@ -917,16 +779,10 @@ void draw::draw_castle_path(bool instant, st_position initial_point, st_position
     if (dist_y < 0) {
         pos_y += castle_point.height + 1;
     }
-    std::cout << "ini.y[" << initial_point.y << "], end.y[" << final_point.y << "], dist_y[" << dist_y << "]" << std::endl;
+    //std::cout << "ini.y[" << initial_point.y << "], end.y[" << final_point.y << "], dist_y[" << dist_y << "]" << std::endl;
     if (dist_y != 0) {
         for (int i=0; i<abs(dist_y)-2; i++) {
-            // border left
-            graphLib.clear_area(pos_x-1, pos_y, 1, 1, 19, 19, 19);
-            // middle
             graphLib.clear_area(pos_x, pos_y, 4, 1, 220, 220, 220);
-            // border right
-            graphLib.clear_area(pos_x+4, pos_y, 1, 1, 19, 19, 19);
-
             if (dist_y > 0) {
                 pos_y--;
             } else {
@@ -945,33 +801,18 @@ void draw::draw_castle_path(bool instant, st_position initial_point, st_position
         pos_y -= 4;
     }
 
-    int temp_pos_x = pos_x;
-    int max_dist_x = abs(dist_x)-2;
-    if (dist_x > 0) {
-        temp_pos_x -= 1;
-        max_dist_x -= 4;
-    } else if (dist_x < 0) {
-        temp_pos_x += 4;
-        max_dist_x -= 4;
-    }
-
     // secondly, move x axis
     if (dist_x > 0) {
         pos_x += 3;
     }
-    std::cout << "ini.x[" << initial_point.x << "], end.x[" << final_point.x << "], dist_x[" << dist_x << "]" << std::endl;
+    //std::cout << "ini.x[" << initial_point.x << "], end.x[" << final_point.x << "], dist_x[" << dist_x << "]" << std::endl;
     if (dist_x != 0) {
-        for (int i=0; i<max_dist_x; i++) {
-            // top
-            graphLib.clear_area(temp_pos_x, pos_y-1, 1, 1, 19, 19, 19);
-            // middle
-            graphLib.clear_area(temp_pos_x, pos_y, 1, 4, 220, 220, 220);
-            // bottom
-            graphLib.clear_area(temp_pos_x, pos_y+4, 1, 1, 19, 19, 19);
+        for (int i=0; i<abs(dist_x)-2; i++) {
+            graphLib.clear_area(pos_x, pos_y, 1, 4, 220, 220, 220);
             if (dist_x > 0) {
-                temp_pos_x--;
+                pos_x--;
             } else {
-                temp_pos_x++;
+                pos_x++;
             }
             if (step_delay > 0) {
                 timer.delay(step_delay);
@@ -982,159 +823,19 @@ void draw::draw_castle_path(bool instant, st_position initial_point, st_position
 
 }
 
-void draw::draw_castle_point(int x, int y)
+/*
+void classPlayer::show_hp()
 {
-    graphLib.copyArea(st_position(x, y), &castle_point, &graphLib.gameScreen);
-}
-
-void draw::draw_explosion(st_position center_point, int radius, int angle_inc)
-{
-    // 8 initial points
-    int points_n = 12;
-    st_float_position points[points_n];
-    float angle_diff = 360 / points_n;
-    int frame = 0;
-
-    std::cout << "DRAW::draw_explosion::START, angle_diff[" << angle_diff << "], center[" << center_point.x << "][" << center_point.y << "]" << std::endl;
-
-    for (int j=0; j<points_n; j++) {
-        float angle = (j*angle_diff)+angle_inc;
-        float angle_rad = (angle * 3.14)/180;
-        points[j] = get_radius_point(center_point, radius, angle_rad);
-        std::cout << "DRAW::draw_explosion - angle[" << angle_rad << "], point[" << j << "][" << points[j].x << "][" << points[j].y << "]" << std::endl;
-        graphLib.copyArea(st_rectangle(frame*32, 0, 32, 32), st_position(points[j].x, points[j].y), graphLib.get_preloaded_image(PRELOADED_IMAGES_EXPLOSION_BUBBLE), &graphLib.gameScreen);
-    }
-    update_screen();
-}
-
-
-graphicsLib_gSurface *draw::get_dynamic_background(string filename)
-{
-    std::map<std::string, graphicsLib_gSurface>::iterator it;
-
-    it = maps_dynamic_background_list.find(filename);
-    if (it == maps_dynamic_background_list.end()) {
-        return NULL;
-    }
-
-    return &maps_dynamic_background_list.find(filename)->second;
-}
-
-graphicsLib_gSurface *draw::get_dynamic_foreground(string filename)
-{
-    std::map<std::string, graphicsLib_gSurface>::iterator it;
-
-    it = maps_dynamic_background_list.find(filename);
-    if (it == maps_dynamic_background_list.end()) {
-        return NULL;
-    }
-
-    return &maps_dynamic_background_list.find(filename)->second;
-}
-
-void draw::set_dynamic_bg_alpha(string filename, int alpha)
-{
-    std::map<std::string, graphicsLib_gSurface>::iterator it;
-
-    it = maps_dynamic_background_list.find(filename);
-    if (it == maps_dynamic_background_list.end()) {
+    if (_show_hp == false) {
         return;
     }
-    graphLib.set_surface_alpha(alpha, &maps_dynamic_background_list.find(filename)->second);
-}
-
-
-void draw::show_hud(int hp, int player_n, int selected_weapon, int selected_weapon_value)
-{
-    // lifes
-    /*
-    graphLib.copyArea(st_rectangle(game_save.selected_player*hud_player_1up.height, 0, hud_player_1up.height, hud_player_1up.height), st_position(6, 20), &hud_player_1up, &graphLib.gameScreen);
-    char lifes_text[125];
-    sprintf(lifes_text, "x0%d", game_save.items.lifes);
-    graphLib.draw_text(26, 24, std::string(lifes_text));
-    */
-
-
-    // player HP
-    int hp_percent = (100 * hp) / fio.get_heart_pieces_number(game_save);
-    draw_enery_ball(hp_percent, 3, hud_player_hp_ball);
-    /*
-    for (int i=0; i<5; i++) {
-        int min = 20*i;
-        int max2 = min+20;
-        //std::cout << "i[" << i << "], hp_percent[" << hp_percent << "], min[" << min << "], max1[" << max1 << "], max2[" << max2 << "]" << std::endl;
-
-        int img_origin_x = 0;
-        if (hp_percent < min) {
-            img_origin_x = hud_player_hp_ball.height*2;
-        } else if (hp_percent < max2) {
-            img_origin_x = hud_player_hp_ball.height;
-        }
-
-        graphLib.copyArea(st_rectangle(img_origin_x, 0, hud_player_hp_ball.height, hud_player_hp_ball.height), st_position(30+10*i, 9), &hud_player_hp_ball, &graphLib.gameScreen);
-    }
-    */
-
-
-    if (selected_weapon != WEAPON_DEFAULT) {
-        // draw weapon
-
-        hud_player_wpn_ball.change_colorkey_color(COLOR_KEY_GREEN, GameMediator::get_instance()->player_list_v3_1[PLAYER_1].weapon_colors[selected_weapon].color1);
-        int wpn_percent = (100 * selected_weapon_value) / fio.get_heart_pieces_number(game_save);
-        //std::cout << "selected_weapon_value[" << selected_weapon_value << "]" << std::endl;
-        draw_enery_ball(wpn_percent, 62, hud_player_wpn_ball);
-    }
-
-    // boss HP
-
-    if (gameControl.must_show_boss_hp() && _boss_current_hp != -99) {
-        int boss_hp_percent = (100 * _boss_current_hp) / BOSS_INITIAL_HP;
-        graphLib.draw_text(RES_W-95, 10, "BOSS:");
-        draw_enery_ball(boss_hp_percent, RES_W-55, hud_boss_hp_ball);
-    }
-
-}
-
-void draw::draw_enery_ball(int value, int x_pos, graphicsLib_gSurface& ball_surface)
-{
-    // 5 balls, each have 4 possible stages
-    // so each slice of energy is 100 / (5*4) = 5%
-    for (int i=0; i<5; i++) {
-        // less than min1 means black ball
-        int min1 = ENERGY_BALL_PERCENT_SLICE*4*i + 5;     // 1/4
-        int min2 = ENERGY_BALL_PERCENT_SLICE*4*i + 10;    // 2/4
-        int min3 = ENERGY_BALL_PERCENT_SLICE*4*i + 15;    // 3/4
-        int min4 = ENERGY_BALL_PERCENT_SLICE*4*i + 20;    // full
-        //std::cout << "i[" << i << "], hp_percent[" << hp_percent << "], min[" << min << "], max1[" << max1 << "], max2[" << max2 << "]" << std::endl;
-
-        int img_origin_x = ENERGY_BALL_IMG_SIZE*4;
-
-        //std::cout << "value[" << value << "], min1[" << min1 << "], min2[" << min2 << "], min3[" << min3 << "], min4[" << min4 << "]" << std::endl;
-
-        if (value >= min4) {
-            img_origin_x = 0;
-        } else if (value >= min3) {
-            img_origin_x = ENERGY_BALL_IMG_SIZE;
-        } else if (value >= min2) {
-            img_origin_x = ENERGY_BALL_IMG_SIZE*2;
-        } else if (value >= min1) {
-            img_origin_x = ENERGY_BALL_IMG_SIZE*3;
-        }
-
-        graphLib.copyArea(st_rectangle(img_origin_x, 0, ball_surface.height, ball_surface.height), st_position(x_pos+(10*i), 3), &ball_surface, &graphLib.gameScreen);
+    graphLib.draw_hp_bar(get_current_hp(), get_number(), WEAPON_DEFAULT, fio.get_heart_pieces_number(game_save));
+    if (get_selected_weapon() != WEAPON_DEFAULT) {
+        graphLib.draw_hp_bar(get_weapon_value(get_selected_weapon()),get_number(), get_selected_weapon(), fio.get_heart_pieces_number(game_save));
     }
 }
+*/
 
-void draw::set_boss_hp(int hp)
-{
-    _boss_current_hp = hp;
-}
-
-void draw::show_boss_intro_bg()
-{
-    graphLib.showSurface(&boss_intro_bg);
-    graphLib.updateScreen();
-}
 
 void draw::clear_maps_dynamic_background_list()
 {
@@ -1145,10 +846,6 @@ void draw::add_dynamic_background(string filename, int auto_scroll_mode, st_colo
 {
     // only add if not existing in map
     if (maps_dynamic_background_list.find(filename) == maps_dynamic_background_list.end()) {
-
-
-        //std::cout << "DRAW::add_dynamic_background::ADD[" << filename << "]" << std::endl;
-
         maps_dynamic_background_list.insert(std::pair<std::string,graphicsLib_gSurface>(filename, graphicsLib_gSurface()));
         std::string bg1_filename(FILEPATH+"images/map_backgrounds/" + filename);
 
@@ -1165,7 +862,6 @@ void draw::add_dynamic_background(string filename, int auto_scroll_mode, st_colo
         //maps_dynamic_background_list.find(filename)->second
     }
 }
-
 
 
 void draw::generate_snow_particles()
@@ -1233,7 +929,7 @@ void draw::show_snow_effect()
 void draw::show_train_effect()
 {
     if (_train_effect_timer == 0) {
-        std::cout << "TRAIN_EFFECT-RESET" << std::endl;
+        //std::cout << "TRAIN_EFFECT-RESET" << std::endl;
         _train_effect_timer = timer.getTimer() + TRAIN_DELAY;
         _train_effect_state = 0;
         if (_train_sfx == NULL) {
@@ -1276,12 +972,6 @@ void draw::show_lightingbolt_effect()
             if (_lightingbolt_effect_state == 1) {
                 soundManager.play_shared_sfx("thunder.wav");
             }
-            graphicsLib_gSurface transparent_area;
-            graphLib.initSurface(st_size(RES_W, RES_H), &transparent_area);
-            graphLib.clear_surface_area(0, 0, RES_W, RES_H, 250, 250, 158, transparent_area);
-            graphLib.set_surface_alpha(80, transparent_area);
-            graphLib.showSurface(&transparent_area);
-
             graphLib.clear_area(0, 0, RES_W, RES_H, 250, 250, 158);
         }
     }

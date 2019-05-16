@@ -14,9 +14,6 @@ extern draw draw_lib;
 #include "timerlib.h"
 extern timerLib timer;
 
-// forward declaration
-class character;
-
 /**
  * @brief
  *
@@ -60,11 +57,9 @@ public:
     short get_effect_n() const;
     void set_owner_position(st_float_position *owner_position);
     void set_owner_direction(Uint8 *owner_direction);
-    void set_owner(character* owner_ptr);
     Uint8 get_speed() const;
     Uint8 get_damage() const;
     Uint8 get_trajectory() const;
-    Uint8 get_vanishes_on_hit() const;
     void set_trajectory(short new_trajectory);
     void set_target_position(st_float_position *pos);
     graphicsLib_gSurface* get_surface();
@@ -73,7 +68,6 @@ public:
     short get_max_shots();
     short get_id();
     void play_sfx(bool called_from_npc);
-    st_float_position get_position();
 
 private:
     // methods that return properties taking in account id -1 (default projectile)
@@ -101,7 +95,6 @@ private:
     unsigned int animation_timer;
     Uint8 direction;
     unsigned int move_timer;
-    long status_timer;
     int move_delay;
     Uint8 status; // status of animation (going/returning, etc)
     Uint8 _move_type;
@@ -116,7 +109,7 @@ private:
 
     bool diagonal_flag; // used to control diagonal shot angle
     Uint8 _max_frames; // number of frames for the projectile
-    double angle;
+    float angle;
     short int radius;
 
 	// used for quake effect
@@ -143,16 +136,6 @@ private:
     int _chain_width;
     float _accel_x;                                       // used for arc
     float _speed_x;                                       // used for arc
-
-    float _dist_y;                                       // used for bouncing ball
-    float _gravity;                                       // used for bouncing ball
-
-    // owner for the projectile
-    character* owner;
-    short frame_w;
-
-    // used for rotated images
-    graphicsLib_gSurface rotated_surface;
 
 };
 #endif // PROJECTILELIB_H

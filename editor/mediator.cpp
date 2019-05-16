@@ -12,12 +12,10 @@
 #define EDIT_MODE_NEW 0
 #define EDIT_MODE_EDIT 1
 
-#define PROJECTILE_FILE_V3 "data/game_projectile_list_v3.dat"
-
 // Global static pointer used to ensure a single instance of the class.
-Mediator* Mediator::_instance = nullptr;
+Mediator* Mediator::_instance = NULL;
 
-Mediator::Mediator() : stage_data(), stage_extra_data() {
+Mediator::Mediator() : stage_data() {
 	palleteX=0;
 	palleteY=0;
     selectedTileset = "/images/tilesets/default.png";
@@ -43,8 +41,6 @@ Mediator::Mediator() : stage_data(), stage_extra_data() {
 
 	zoom = 1;
 	currentStage = 1;
-    currentDifficulty = DIFFICULTY_EASY;
-    currentDifficultyMode = DIFFICULTY_MODE_GREATER;
 	sprintf(addNpcFilename, "%c", '\0');
     sprintf(addProjectileFilename, "%c", '\0');
 
@@ -68,14 +64,13 @@ Mediator::Mediator() : stage_data(), stage_extra_data() {
     show_objects_flag = true;
     show_npcs_flag = true;
     show_teleporters_flag = true;
-    show_grid = true;
 
     combobox_select_string = "-Select-";
 
     selectedTileset = FILEPATH + "/images/tilesets/default.png";
 
     if (enemy_list.size() == 0) { // add one first item to avoid errors
-        enemy_list.push_back(CURRENT_FILE_FORMAT::file_npc_v3_1_2());
+        enemy_list.push_back(CURRENT_FILE_FORMAT::file_npc());
     }
     if (object_list.size() == 0) { // add one first item to avoid errors
         object_list.push_back(CURRENT_FILE_FORMAT::file_object());
@@ -83,17 +78,27 @@ Mediator::Mediator() : stage_data(), stage_extra_data() {
     if (ai_list.size() == 0) { // add one first item to avoid errors
         ai_list.push_back(CURRENT_FILE_FORMAT::file_artificial_inteligence());
     }
+    /*
+    if (projectile_list.size() == 0) {
+        projectile_list.push_back(CURRENT_FILE_FORMAT::file_projectile());
+    }
+    */
+    if (projectile_list_v2.size() == 0) {
+        projectile_list_v2.push_back(CURRENT_FILE_FORMAT::file_projectile());
+    }
+
 
     if (scene_list.size() == 0) {
         scene_list.push_back(CURRENT_FILE_FORMAT::file_scene_list());
     }
 
-    if (player_list_v3_1.size() == 0) {
+    if (player_list.size() == 0) {
         for (int i=0; i<FS_MAX_PLAYERS; i++) {
-            player_list_v3_1.push_back(CURRENT_FILE_FORMAT::file_player_v3_1_1(i));
+            player_list.push_back(CURRENT_FILE_FORMAT::file_player(i));
         }
     }
 
+    stage_dialog_list.clear();
     stage_dialog_list.clear();
 
     /*
@@ -316,25 +321,28 @@ Mediator::Mediator() : stage_data(), stage_extra_data() {
 
 void Mediator::save_dialogs()
 {
+    std::cout << "stage_dialog_list.size[" << stage_dialog_list.size() << "]" << std::endl;
 
     std::map<int, std::vector<std::string> >::iterator it;
-    for (int i=0; i<LANGUAGE_COUNT; i++) {
-        std::cout << "stage_dialog_list.size[" << stage_dialog_list[i].size() << "]" << std::endl;
-        for (it = stage_dialog_list[i].begin(); it != stage_dialog_list[i].end(); it++) {
-            std::vector<std::string> list_copy = it->second;
+    for (it = stage_dialog_list.begin(); it != stage_dialog_list.end(); it++) {
+        std::vector<std::string> list_copy = it->second;
 
-            if (list_copy.size() > STAGE_DIALOG_NUMBER) {
-                std::cout << "ERROR: Invalid dialogs size" << std::endl;
-                return;
-            }
-            std::cout << "list_copy.size[" << list_copy.size() << "]" << std::endl;
-
-            for (int i=0; i<list_copy.size(); i++) {
-                list_copy.at(i) = list_copy.at(i) + "\n";
-            }
-            fio_str.save_stage_dialogs(it->first, i, list_copy);
+        if (list_copy.size() > STAGE_DIALOG_NUMBER) {
+            std::cout << "ERROR: Invalid dialogs size" << std::endl;
+            return;
         }
+        std::cout << "list_copy.size[" << list_copy.size() << "]" << std::endl;
+
+        for (int i=0; i<list_copy.size(); i++) {
+            list_copy.at(i) = list_copy.at(i) + "\n";
+        }
+        fio_str.save_stage_dialogs(it->first, list_copy);
     }
+}
+
+void Mediator::load_dialogs()
+{
+    //Mediator::get_instance()->stage_dialog_list.insert(std::pair<int, std::vector<std::string> >(stage_id, fio_str.get_stage_dialogs(Mediator::get_instance()->currentStage, LANGUAGE_ENGLISH)));
 }
 
 
@@ -378,36 +386,21 @@ void Mediator::setPallete(char *value) {
 
 
 void Mediator::load_game() {
-    fio.read_game(game_data);
-    fio.read_all_stages(stage_data);
-    std::string stages_extra_data_filename = "data/stages_extra_data" + fio.get_sufix() + ".dat";
-
-
-    if (fio.file_exists(FILEPATH + "/" + stages_extra_data_filename)) {
-        stage_extra_data = fio_cmm.load_struct_data<CURRENT_FILE_FORMAT::file_stages_extra_data>(stages_extra_data_filename);
-    }
-    load_game_data();
+    Mediator::get_instance()->fio.read_game(game_data);
+    Mediator::get_instance()->fio.read_all_stages(stage_data);
+    Mediator::get_instance()->fio.read_all_maps(maps_data);
     Mediator::get_instance()->fio.read_castle_data(castle_data);
 
-    // convert enemy-ist to 3.1.2
-    enemy_list_3_1_1 = fio_cmm.load_from_disk<CURRENT_FILE_FORMAT::file_npc_v3_1_1>("game_enemy_list_3_1_1.dat");
-    enemy_list = fio_cmm.load_from_disk<CURRENT_FILE_FORMAT::file_npc_v3_1_2>("game_enemy_list_3_1_2.dat");
-    if (enemy_list.size() == 0) {
-        if (enemy_list_3_1_1.size() == 0) {
-            enemy_list.push_back(CURRENT_FILE_FORMAT::file_npc_v3_1_2());
-        } else {
-            for (int i=0; i<enemy_list_3_1_1.size(); i++) {
-                enemy_list.push_back(CURRENT_FILE_FORMAT::file_npc_v3_1_2(enemy_list_3_1_1.at(i)));
-            }
-        }
+    enemy_list = fio_cmm.load_from_disk<CURRENT_FILE_FORMAT::file_npc>("game_enemy_list.dat");
+    if (enemy_list.size() == 0) { // add one first item to avoid errors
+        enemy_list.push_back(CURRENT_FILE_FORMAT::file_npc());
     }
-
     object_list = fio_cmm.load_from_disk<CURRENT_FILE_FORMAT::file_object>("game_object_list.dat");
     if (object_list.size() == 0) { // add one first item to avoid errors
         object_list.push_back(CURRENT_FILE_FORMAT::file_object());
     }
-
     ai_list = fio_cmm.load_from_disk<CURRENT_FILE_FORMAT::file_artificial_inteligence>("game_ai_list.dat");
+
     //std::cout << "MEDIATOR::load_game::ai_list.size(): " << ai_list.size() << std::endl;
     if (ai_list.size() == 0) { // add one first item to avoid errors
         for (int i=0; i<enemy_list.size(); i++) {
@@ -415,37 +408,20 @@ void Mediator::load_game() {
         }
     }
 
-    // *** AI V3 *** //
     /*
-    ai_list = fio_cmm.load_from_disk<CURRENT_FILE_FORMAT::file_artificial_inteligence_v3>("game_ai_list_v3.dat");
-    if (ai_list.size() == 0) { // add one first item to avoid errors
-        for (int i=0; i<enemy_list.size(); i++) {
-            ai_list.push_back(CURRENT_FILE_FORMAT::file_artificial_inteligence_v3());
-        }
+    projectile_list = fio_cmm.load_from_disk<CURRENT_FILE_FORMAT::file_projectile>("game_projectile_list.dat");
+    if (projectile_list.size() == 0) {
+        projectile_list.push_back(CURRENT_FILE_FORMAT::file_projectile());
     }
+    std::cout << "@@@@@@@@@@@@@@@@@@@@@@@ projectile_list.size[" << projectile_list.size() << "]" << std::endl;
+    convertProjectileListToV2();
     */
-    // *** AI V3 *** //
-
 
     projectile_list_v2 = fio_cmm.load_from_disk<CURRENT_FILE_FORMAT::file_projectilev2>("data/game_projectile_list_v2.dat");
     if (projectile_list_v2.size() == 0) {
         projectile_list_v2.push_back(CURRENT_FILE_FORMAT::file_projectilev2());
     }
     std::cout << "@@@@@@@@@@@@@@@@@@@@@@@ projectile_list_v2.size[" << projectile_list_v2.size() << "]" << std::endl;
-
-    // converts projectile_v2 into projectile_v3 //
-    /*
-    projectile_list_v3.clear();
-    for (int i=0; i<projectile_list_v2.size(); i++) {
-        projectile_list_v3.push_back(CURRENT_FILE_FORMAT::file_projectilev3(projectile_list_v2.at(i)));
-    }
-    */
-    projectile_list_v3 = fio_cmm.load_from_disk<CURRENT_FILE_FORMAT::file_projectilev3>(PROJECTILE_FILE_V3);
-    if (projectile_list_v3.size() == 0) {
-        projectile_list_v3.push_back(CURRENT_FILE_FORMAT::file_projectilev3());
-    }
-    std::cout << "@@@@@@@@@@@@@@@@@@@@@@@ projectile_list_v3.size[" << projectile_list_v3.size() << "]" << std::endl;
-
 
     scene_list = fio_scenes.load_scenes();
     if (scene_list.size() == 0) {
@@ -454,49 +430,17 @@ void Mediator::load_game() {
 
     anim_block_list = fio_cmm.load_from_disk<CURRENT_FILE_FORMAT::file_anim_block>("anim_block_list.dat");
 
-    player_list_v3_1 = fio_cmm.load_from_disk<CURRENT_FILE_FORMAT::file_player_v3_1_1>("player_list_v3_1_1.dat");
-    if (player_list_v3_1.size() == 0) {
+    player_list = fio_cmm.load_from_disk<CURRENT_FILE_FORMAT::file_player>("player_list.dat");
+    if (player_list.size() == 0) {
         for (int i=0; i<FS_MAX_PLAYERS; i++) {
-            player_list_v3_1.push_back(CURRENT_FILE_FORMAT::file_player_v3_1_1(i));
+            player_list.push_back(CURRENT_FILE_FORMAT::file_player(i));
         }
     }
+
+    load_stage_select_data();
 
     ScenesMediator::get_instance()->load_game_scenes();
 
-}
-
-void Mediator::load_game_data()
-{
-    bool convert_old_map_data = false;
-
-    if (convert_old_map_data) {
-        Mediator::get_instance()->fio.read_all_maps(maps_data);
-        convert_map_data_to_v2();
-    } else {
-        Mediator::get_instance()->fio.read_all_maps_v2(maps_data_v2);
-        maps_data_npc_list = fio_cmm.load_from_disk<CURRENT_FILE_FORMAT::file_map_npc_v2>(std::string("/map_npc_data.dat"));
-
-        for (int i=0; i<maps_data_npc_list.size(); i++) {
-            // adjust for rockbot 1
-            /*
-            if (maps_data_npc_list.at(i).id_npc == 0 || maps_data_npc_list.at(i).id_npc == 15 || maps_data_npc_list.at(i).id_npc == 16 || maps_data_npc_list.at(i).id_npc == 19) {
-                maps_data_npc_list.at(i).start_point.y -= 1;
-            }
-            */
-            // adjust for rockbot 2
-            /*
-            if (maps_data_npc_list.at(i).id_npc == 8 || maps_data_npc_list.at(i).id_npc == 9) {
-                maps_data_npc_list.at(i).start_point.y -= 1;
-            }
-            */
-        }
-
-
-        maps_data_object_list = fio_cmm.load_from_disk<CURRENT_FILE_FORMAT::file_map_object_v2>(std::string("/map_object_data.dat"));
-
-        points_castle1 = fio_cmm.load_single_object_from_disk<CURRENT_FILE_FORMAT::st_file_castle_ponts>(std::string("/castle1_points.dat"));
-        points_castle2 = fio_cmm.load_single_object_from_disk<CURRENT_FILE_FORMAT::st_file_castle_ponts>(std::string("/castle2_points.dat"));
-    }
 }
 
 void Mediator::save_game()
@@ -506,97 +450,27 @@ void Mediator::save_game()
 
     Mediator::get_instance()->fio.write_game(game_data);
     Mediator::get_instance()->fio.write_all_stages(stage_data);
-
-    std::string stages_extra_data_filename = "data/stages_extra_data" + fio.get_sufix() + ".dat";
-    fio_cmm.save_struct_data<CURRENT_FILE_FORMAT::file_stages_extra_data>(stages_extra_data_filename, stage_extra_data);
-
-
-    save_map_data();
+    Mediator::get_instance()->fio.write_all_maps(maps_data);
     Mediator::get_instance()->fio.write_castle_data(castle_data);
 
-    fio_cmm.save_data_to_disk<CURRENT_FILE_FORMAT::file_npc_v3_1_2>("game_enemy_list_3_1_2.dat", enemy_list);
+    fio_cmm.save_data_to_disk<CURRENT_FILE_FORMAT::file_npc>("game_enemy_list.dat", enemy_list);
     fio_cmm.save_data_to_disk<CURRENT_FILE_FORMAT::file_object>("game_object_list.dat", object_list);
     fio_cmm.save_data_to_disk<CURRENT_FILE_FORMAT::file_artificial_inteligence>("game_ai_list.dat", ai_list);
-
-
-    //convert_ai_list_to_v3();
-    //fio_cmm.save_data_to_disk<CURRENT_FILE_FORMAT::file_artificial_inteligence_v3>("game_ai_list_v3.dat", ai_list);
+    //fio_cmm.save_data_to_disk<CURRENT_FILE_FORMAT::file_projectile>("game_projectile_list.dat", projectile_list);
 
     //convertProjectileListToV2();
-    fio_cmm.save_data_to_disk<CURRENT_FILE_FORMAT::file_projectilev3>("data/game_projectile_list_v3.dat", projectile_list_v3);
+    fio_cmm.save_data_to_disk<CURRENT_FILE_FORMAT::file_projectilev2>("data/game_projectile_list_v2.dat", projectile_list_v2);
 
     fio_cmm.save_data_to_disk<CURRENT_FILE_FORMAT::file_anim_block>("anim_block_list.dat", anim_block_list);
 
-    fio_cmm.save_data_to_disk<CURRENT_FILE_FORMAT::file_player_v3_1_1>("player_list_v3_1_1.dat", player_list_v3_1);
-
-    /*
-    // ######### convert player_v3.1 to player_v3.1.1 ######### //
-    player_list_v3_1_1.clear();
-    for (int i=0; i<player_list_v3_1.size(); i++) {
-        player_list_v3_1_1.push_back(CURRENT_FILE_FORMAT::file_player_v3_1_1(player_list_v3_1.at(i)));
-    }
-    fio_cmm.save_data_to_disk<CURRENT_FILE_FORMAT::file_player_v3_1_1>("player_list_v3_1_1.dat", player_list_v3_1_1);
-    // ######### convert player_v3.1 to player_v3.1.1 ######### //
-
-    // ######### convert npc to npc_v3.1.1 ######### //
-    enemy_list_3_1_1.clear();
-    for (int i=0; i<enemy_list.size(); i++) {
-        enemy_list_3_1_1.push_back(CURRENT_FILE_FORMAT::file_npc_v3_1_1(enemy_list.at(i)));
-    }
-    fio_cmm.save_data_to_disk<CURRENT_FILE_FORMAT::file_npc_v3_1_1>("game_enemy_list_3_1_1.dat", enemy_list_3_1_1);
-    // ######### convert npc to npc_v3.1.1 ######### //
-    */
-
-    fio_cmm.save_single_object_to_disk<CURRENT_FILE_FORMAT::st_file_castle_ponts>("castle1_points.dat", points_castle1);
-    fio_cmm.save_single_object_to_disk<CURRENT_FILE_FORMAT::st_file_castle_ponts>("castle2_points.dat", points_castle2);
+    fio_cmm.save_data_to_disk<CURRENT_FILE_FORMAT::file_player>("player_list.dat", player_list);
 
     ScenesMediator::get_instance()->save_game_scenes();
 
     save_dialogs();
-}
 
-void Mediator::save_map_data()
-{
-    //Mediator::get_instance()->fio.write_all_maps(maps_data);
-    Mediator::get_instance()->fio.write_all_maps_v2(maps_data_v2);
-    // TODO save v2
-    fio_cmm.save_data_to_disk<CURRENT_FILE_FORMAT::file_map_npc_v2>("/map_npc_data.dat", maps_data_npc_list);
-    fio_cmm.save_data_to_disk<CURRENT_FILE_FORMAT::file_map_object_v2>("/map_object_data.dat", maps_data_object_list);
-}
+    save_stage_select_data();
 
-void Mediator::convert_map_data_to_v2()
-{
-    //maps_data[FS_MAX_STAGES][FS_STAGE_MAX_MAPS]
-    maps_data_npc_list.clear();
-    maps_data_object_list.clear();
-    for (int i=0; i<FS_MAX_STAGES; i++) {
-        for (int j=0; j<FS_STAGE_MAX_MAPS; j++) {
-            maps_data_v2[i][j] = CURRENT_FILE_FORMAT::file_map_v2(maps_data[i][j]);
-
-            /*
-            for (int k=0; k<FS_MAX_MAP_NPCS; k++) {
-                if (maps_data[i][j].map_npcs[k].id_npc != -1) {
-                    maps_data_npc_list.push_back(CURRENT_FILE_FORMAT::file_map_npc_v2(maps_data[i][j].map_npcs[k], i, j));
-                }
-            }
-            for (int k=0; k<FS_MAX_MAP_OBJECTS; k++) {
-                if (maps_data[i][j].map_objects[k].id_object != -1) {
-                    maps_data_object_list.push_back(CURRENT_FILE_FORMAT::file_map_object_v2(maps_data[i][j].map_objects[k], i, j));
-                }
-            }
-            */
-        }
-    }
-}
-
-void Mediator::convert_ai_list_to_v3()
-{
-    /*
-    ai_list.clear();
-    for (int i=0; i<ai_list_v2.size(); i++) {
-        ai_list.push_back(CURRENT_FILE_FORMAT::file_artificial_inteligence_v3(ai_list_v2.at(i)));
-    }
-    */
 }
 
 void Mediator::clean_data()
@@ -623,10 +497,10 @@ void Mediator::clean_data()
         for (int j=0; j<FS_STAGE_MAX_MAPS; j++) {
             for (int x=0; x<MAP_W; x++) {
                 for (int y=0; y<MAP_H; y++) {
-                    if (maps_data_v2[i][j].tiles[x][y].tile3.x*TILESIZE >= tileset_w || maps_data_v2[i][j].tiles[x][y].tile3.y*TILESIZE >= tileset_h) {
-                        std::cout << "ERASE LV3 TILE stage[" << i << "], map[" << j << "], tile[" << x << "][" << y << "], values[" << (int)maps_data_v2[i][j].tiles[x][y].tile3.x << "][" << (int)maps_data_v2[i][j].tiles[x][y].tile3.y << "]" << std::endl;
-                        maps_data_v2[i][j].tiles[x][y].tile3.x = -1;
-                        maps_data_v2[i][j].tiles[x][y].tile3.y = -1;
+                    if (maps_data[i][j].tiles[x][y].tile3.x*TILESIZE >= tileset_w || maps_data[i][j].tiles[x][y].tile3.y*TILESIZE >= tileset_h) {
+                        std::cout << "ERASE LV3 TILE stage[" << i << "], map[" << j << "], tile[" << x << "][" << y << "], values[" << (int)maps_data[i][j].tiles[x][y].tile3.x << "][" << (int)maps_data[i][j].tiles[x][y].tile3.y << "]" << std::endl;
+                        maps_data[i][j].tiles[x][y].tile3.x = -1;
+                        maps_data[i][j].tiles[x][y].tile3.y = -1;
                     }
                 }
             }
@@ -638,23 +512,45 @@ void Mediator::clean_data()
 
 void Mediator::temp_fix_player_colors_order()
 {
-    for (int i=0; i<player_list_v3_1.size(); i++) {
-        CURRENT_FILE_FORMAT::file_player_v3_1_1 temp_player = player_list_v3_1.at(i);
+    for (int i=0; i<player_list.size(); i++) {
+        CURRENT_FILE_FORMAT::file_player temp_player = player_list.at(i);
         CURRENT_FILE_FORMAT::file_weapon_colors copy_weapon_colors[MAX_WEAPON_N];
         for (int j=0; j<MAX_WEAPON_N; j++) {
-            copy_weapon_colors[j] = player_list_v3_1.at(i).weapon_colors[j];
+            copy_weapon_colors[j] = player_list.at(i).weapon_colors[j];
         }
         // gear <-> beast
-        player_list_v3_1.at(i).weapon_colors[1] = copy_weapon_colors[5];
-        player_list_v3_1.at(i).weapon_colors[5] = copy_weapon_colors[1];
+        player_list.at(i).weapon_colors[1] = copy_weapon_colors[5];
+        player_list.at(i).weapon_colors[5] = copy_weapon_colors[1];
         // dragon (laranja) <-> snow
-        player_list_v3_1.at(i).weapon_colors[2] = copy_weapon_colors[8];
-        player_list_v3_1.at(i).weapon_colors[8] = copy_weapon_colors[2];
+        player_list.at(i).weapon_colors[2] = copy_weapon_colors[8];
+        player_list.at(i).weapon_colors[8] = copy_weapon_colors[2];
         // zodiac (yellow) <-> phantom (dark-blue+white)
-        player_list_v3_1.at(i).weapon_colors[6] = copy_weapon_colors[7];
-        player_list_v3_1.at(i).weapon_colors[7] = copy_weapon_colors[6];
+        player_list.at(i).weapon_colors[6] = copy_weapon_colors[7];
+        player_list.at(i).weapon_colors[7] = copy_weapon_colors[6];
     }
 }
+
+void Mediator::load_stage_select_data()
+{
+    fio.read_stage_select_data(stage_select_data);
+}
+
+void Mediator::save_stage_select_data()
+{
+    fio.write_stage_select_data(stage_select_data);
+}
+
+/*
+void Mediator::convertProjectileListToV2()
+{
+    projectile_list_v2.clear();
+    for (int i=0; i<projectile_list.size(); i++) {
+        projectile_list_v2.push_back(CURRENT_FILE_FORMAT::file_projectilev2(projectile_list.at(i)));
+    }
+    std::cout << "############# convertProjectileListToV2 - v1.size[" << projectile_list.size() << "], v2.size[" << projectile_list_v2.size() << "]" << std::endl;
+}
+*/
+
 
 
 void Mediator::centNumberFormat(int n) {

@@ -9,7 +9,7 @@
 
 #include <sstream>
 
-#if defined(LINUX) || defined(OSX) || defined(RASPBERRY)
+#if defined(LINUX) || defined(OSX)
     #include <errno.h>
     #include <sys/stat.h>
     #include <unistd.h>
@@ -65,12 +65,12 @@ void get_filepath()
     delete[] buffer;
 #endif
 
-    std::cout << "get_filepath - GAMEPATH:" << GAMEPATH << std::endl;
+    //std::cout << "get_filepath - GAMEPATH:" << GAMEPATH << std::endl;
 }
 
 bool check_parameters(int argc, char *argv[]) {
     if (argc < 2) {
-        std::cout << "ERROR: must inform --gamename \"[NAME]\" to run this app." << std::endl;
+        //std::cout << "ERROR: must inform --gamename \"[NAME]\" to run this app." << std::endl;
         return false;
     }
 
@@ -80,26 +80,26 @@ bool check_parameters(int argc, char *argv[]) {
         std::string temp_argv(argv[i]);
         if (temp_argv == "--gamename") {
             if (argc <= i+1) {
-                std::cout << "ERROR: no [NAME] informed for --gamename flag." << std::endl;
+                //std::cout << "ERROR: no [NAME] informed for --gamename flag." << std::endl;
                 return false;
             } else {
                 GAMENAME = std::string(argv[i+1]);
             }
         } else if (temp_argv == "--scenenumber") {
             if (argc <= i+1) {
-                std::cout << "ERROR: no [NUMBER] informed for --scenenumber flag." << std::endl;
+                //std::cout << "ERROR: no [NUMBER] informed for --scenenumber flag." << std::endl;
                 return false;
             } else {
                 istringstream ss(argv[i+1]);
                 if (!(ss >> animation_n)) {
-                    std::cout << "ERROR: Invalid number '" << argv[i+1] << "' for --scenenumber flag." << std::endl;
+                    //std::cout << "ERROR: Invalid number '" << argv[i+1] << "' for --scenenumber flag." << std::endl;
                     return false;
                 }
             }
         }
     }
     FILEPATH = GAMEPATH + std::string("/games/") + GAMENAME + std::string("/");
-    std::cout << "get_filepath - FILEPATH:" << FILEPATH << ", animation_n[" << animation_n << "]" << std::endl;
+    //std::cout << "get_filepath - FILEPATH:" << FILEPATH << ", animation_n[" << animation_n << "]" << std::endl;
     return true;
 }
 

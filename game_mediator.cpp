@@ -31,7 +31,7 @@ Mix_Chunk* GameMediator::get_sfx(std::string filename)
     }
 }
 
-CURRENT_FILE_FORMAT::file_projectilev3 GameMediator::get_projectile(int n)
+CURRENT_FILE_FORMAT::file_projectilev2 GameMediator::get_projectile(int n)
 {
     if (n < 0 || n >= projectile_list.size()) {
         return projectile_list.at(0);
@@ -44,7 +44,7 @@ int GameMediator::get_projectile_list_size()
     return projectile_list.size();
 }
 
-CURRENT_FILE_FORMAT::file_npc_v3_1_2* GameMediator::get_enemy(int n)
+CURRENT_FILE_FORMAT::file_npc* GameMediator::get_enemy(int n)
 {
     // boss not yet set
     if (n < 0 || n >= enemy_list.size()) {
@@ -204,13 +204,13 @@ void GameMediator::wii_convert_anim_tile_list() {
 
 GameMediator::GameMediator()
 {
-    enemy_list = fio_cmm.load_from_disk<CURRENT_FILE_FORMAT::file_npc_v3_1_2>("game_enemy_list_3_1_2.dat");
+    enemy_list = fio_cmm.load_from_disk<CURRENT_FILE_FORMAT::file_npc>("game_enemy_list.dat");
     object_list = fio_cmm.load_from_disk<CURRENT_FILE_FORMAT::file_object>("game_object_list.dat");
     ai_list = fio_cmm.load_from_disk<CURRENT_FILE_FORMAT::file_artificial_inteligence>("game_ai_list.dat");
-    projectile_list = fio_cmm.load_from_disk<CURRENT_FILE_FORMAT::file_projectilev3>("data/game_projectile_list_v3.dat");
+    projectile_list = fio_cmm.load_from_disk<CURRENT_FILE_FORMAT::file_projectilev2>("data/game_projectile_list_v2.dat");
 
     anim_tile_list = fio_cmm.load_from_disk<CURRENT_FILE_FORMAT::file_anim_block>("anim_block_list.dat");
-    player_list_v3_1 = fio_cmm.load_from_disk<CURRENT_FILE_FORMAT::file_player_v3_1_1>("player_list_v3_1_1.dat");
+    player_list = fio_cmm.load_from_disk<CURRENT_FILE_FORMAT::file_player>("player_list.dat");
 
 #ifdef WII
     wii_convert_npc_list();
@@ -222,11 +222,11 @@ GameMediator::GameMediator()
 #endif
     // add some dummy data for game not to crash
     if (projectile_list.size() == 0) {
-        projectile_list.push_back(CURRENT_FILE_FORMAT::file_projectilev3());
+        projectile_list.push_back(CURRENT_FILE_FORMAT::file_projectilev2());
     }
-    if (player_list_v3_1.size() == 0) {
+    if (player_list.size() == 0) {
         for (int i=0; i<FS_MAX_PLAYERS; i++) {
-            player_list_v3_1.push_back(CURRENT_FILE_FORMAT::file_player_v3_1_1(i));
+            player_list.push_back(CURRENT_FILE_FORMAT::file_player(i));
         }
     }
 }
