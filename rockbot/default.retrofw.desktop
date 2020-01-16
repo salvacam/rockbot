@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Rockbot
+Comment=Rockbot port
+Exec=rockbot.dge
+Icon=rockbot
+Categories=games;
+Terminal=false
+Type=Application
+StartupNotify=true

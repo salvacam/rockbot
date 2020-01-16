@@ -1,0 +1,4 @@
+title=Rockbot
+description=Rockbot port
+exec=/home/retrofw/games/rockbot/rockbot.elf
+clock=600

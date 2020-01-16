@@ -1,0 +1,10 @@
+Package: rockbot
+Version: 
+Description: RetroGame port of Rockbot
+Section: emus
+Priority: optional
+Maintainer: pingflood
+Architecture: mipsel
+Homepage: https://github.com/retrofw/rockbot
+Depends:
+Source: https://github.com/retrofw/rockbot
