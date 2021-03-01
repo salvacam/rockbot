@@ -3,17 +3,17 @@
 #include <math.h>
 
 #include "classplayer.h"
-#include "inputlib.h"
+#include "../inputlib.h"
 extern inputLib input;
-#include "class_config.h"
+#include "../class_config.h"
 
-#include "soundlib.h"
+#include "../soundlib.h"
 extern soundLib soundManager;
 
-#include "game.h"
+#include "../game.h"
 extern game gameControl;
 
-#include "game_mediator.h"
+#include "../game_mediator.h"
 
 extern std::string FILEPATH;
 
@@ -25,9 +25,9 @@ extern FREEZE_EFFECT_TYPES freeze_weapon_effect;
 
 #define PLAYER_MOVE_SPEED 1.25 // higher is faster
 
-#include "file/file_io.h"
+#include "../file/file_io.h"
 
-#include "classmap.h"
+#include "../classmap.h"
 
 extern CURRENT_FILE_FORMAT::file_io fio;
 

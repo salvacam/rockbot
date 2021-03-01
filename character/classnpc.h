@@ -3,8 +3,8 @@
 
 #include <string>
 #include "character.h"
-#include "file/format.h"
-#include "character/artificial_inteligence.h"
+#include "../file/format.h"
+#include "artificial_inteligence.h"
 
 class classPlayer;
 

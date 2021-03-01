@@ -8,13 +8,13 @@
 #include <map>
 
 // local includes
-#include "file/format/st_hitPoints.h"
-#include "file/format/st_common.h"
-#include "file/format/st_characterState.h"
-#include "graphicslib.h"
-#include "projectilelib.h"
-#include "character/movement/jump.h"
-#include "character/movement/inertia.h"
+#include "../file/format/st_hitPoints.h"
+#include "../file/format/st_common.h"
+#include "../file/format/st_characterState.h"
+#include "../graphicslib.h"
+#include "../projectilelib.h"
+#include "movement/jump.h"
+#include "movement/inertia.h"
 
 
 extern graphicsLib graphLib;

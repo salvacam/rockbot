@@ -1,19 +1,19 @@
 #include <cstdlib>
 #include "object.h"
-#include "file/format.h"
-#include "classmap.h"
-#include "file/format/st_common.h"
+#include "../file/format.h"
+#include "../classmap.h"
+#include "../file/format/st_common.h"
 
 extern graphicsLib graphLib;
 extern std::string FILEPATH;
 
-#include "timerlib.h"
+#include "../timerlib.h"
 extern timerLib timer;
 
-#include "graphicslib.h"
+#include "../graphicslib.h"
 extern graphicsLib graphLib;
 
-#include "soundlib.h"
+#include "../soundlib.h"
 extern soundLib soundManager;
 
 extern CURRENT_FILE_FORMAT::st_save game_save;
@@ -27,7 +27,7 @@ extern CURRENT_FILE_FORMAT::file_game game_data;
 #define DELAY_RAY 1500
 #define FRAMETIMER_DEATHRAY 30
 
-#include "game.h"
+#include "../game.h"
 extern game gameControl;
 
 #define DISAPPEARNING_VISIBLE_TIME 1500

@@ -4,7 +4,7 @@
 #include "file_io.h"
 #include "convert.h"
 #include "../file/convert.h"
-#include "aux_tools/stringutils.h"
+#include "../aux_tools/stringutils.h"
 
 #ifdef DREAMCAST
 #include <kos.h>

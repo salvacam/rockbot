@@ -18,7 +18,7 @@
 #include <fileio.h>
 #endif
 
-#include "file/fio_common.h"
+#include "fio_common.h"
 
 extern std::string FILEPATH;
 extern std::string SAVEPATH;

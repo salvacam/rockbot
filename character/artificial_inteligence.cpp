@@ -1,21 +1,21 @@
 #include "artificial_inteligence.h"
-#include "classmap.h"
+#include "../classmap.h"
 #include <cmath>
 #include <cstdlib>
 #include <algorithm>
-#include "character/classplayer.h"
+#include "classplayer.h"
 
 #ifdef ANDROID
 #include <android/log.h>
 #endif
 
-#include "game_mediator.h"
+#include "../game_mediator.h"
 
-#include "game.h"
+#include "../game.h"
 extern game gameControl;
 
 
-#include "soundlib.h"
+#include "../soundlib.h"
 extern soundLib soundManager;
 
 

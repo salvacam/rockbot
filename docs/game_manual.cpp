@@ -1,21 +1,21 @@
 #include "game_manual.h"
 
-#include "graphicslib.h"
+#include "../graphicslib.h"
 extern graphicsLib graphLib;
 
-#include "inputlib.h"
+#include "../inputlib.h"
 extern inputLib input;
 
-#include "soundlib.h"
+#include "../soundlib.h"
 extern soundLib soundManager;
 
-#include "timerlib.h"
+#include "../timerlib.h"
 extern timerLib timer;
 
-#include "graphic/draw.h"
+#include "../graphic/draw.h"
 extern draw draw_lib;
 
-#include "soundlib.h"
+#include "../soundlib.h"
 extern soundLib soundManager;
 
 

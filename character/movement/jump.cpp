@@ -8,7 +8,7 @@
 
 #define JUMP_INITIAL_SPEED 5.375
 
-#include "game.h"
+#include "../../game.h"
 extern game gameControl;
 
 

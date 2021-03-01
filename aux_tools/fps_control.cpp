@@ -5,7 +5,7 @@
 #define DEFULT_PLAYER_SPEED 1.2
 #define DEFAULT_FPS_MAX 60
 
-#include "timerlib.h"
+#include "../timerlib.h"
 extern timerLib timer;
 
 

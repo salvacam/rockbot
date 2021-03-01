@@ -1,23 +1,23 @@
 #include <cstdlib>
 #include <sstream>
 #include "classnpc.h"
-#include "graphicslib.h"
-#include "stage.h"
+#include "../graphicslib.h"
+#include "../stage.h"
 #include "classplayer.h"
-#include "classmap.h"
+#include "../classmap.h"
 #include <math.h>
 #include <string.h>
 
-#include "game_mediator.h"
+#include "../game_mediator.h"
 
 #ifdef ANDROID
 #include <android/log.h>
 #endif
 
-#include "inputlib.h"
+#include "../inputlib.h"
 extern inputLib input;
 
-#include "game.h"
+#include "../game.h"
 extern game gameControl;
 
 

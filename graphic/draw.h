@@ -1,9 +1,9 @@
 #ifndef DRAW_H
 #define DRAW_H
 
-#include "graphicslib.h"
+#include "../graphicslib.h"
 
-#include "soundlib.h"
+#include "../soundlib.h"
 
 #define FLASH_POINTS_N 10
 #define SNOW_PARTICLES_NUMBER 20

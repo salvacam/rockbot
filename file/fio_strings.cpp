@@ -3,9 +3,9 @@
 #include <iostream>
 #include <fstream>
 
-#include "defines.h"
-#include "aux_tools/stringutils.h"
-#include "file/fio_common.h"
+#include "../defines.h"
+#include "../aux_tools/stringutils.h"
+#include "../file/fio_common.h"
 
 extern std::string FILEPATH;
 extern std::string GAMEPATH;

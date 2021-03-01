@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "draw.h"
 
-#include "game_mediator.h"
+#include "../game_mediator.h"
 
 #define RAIN_DELAY 160
 #define FLASH_DELAY 260
@@ -21,26 +21,26 @@
 
 extern graphicsLib graphLib;
 
-#include "timerlib.h"
+#include "../timerlib.h"
 extern timerLib timer;
 
 extern CURRENT_FILE_FORMAT::file_game game_data;
 
 extern std::string FILEPATH;
 
-#include "game.h"
+#include "../game.h"
 extern game gameControl;
 
-#include "inputlib.h"
+#include "../inputlib.h"
 extern inputLib input;
 
-#include "strings_map.h"
+#include "../strings_map.h"
 
 extern soundLib soundManager;
 
 #define FADE_INC 2
 
-#include "file/file_io.h"
+#include "../file/file_io.h"
 extern CURRENT_FILE_FORMAT::file_io fio;
 extern CURRENT_FILE_FORMAT::st_save game_save;
 
